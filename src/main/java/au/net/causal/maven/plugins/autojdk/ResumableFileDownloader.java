@@ -43,14 +43,17 @@ public class ResumableFileDownloader extends SimpleFileDownloader
     throws IOException
     {
         long downloadSize = con.getContentLengthLong();
+        boolean supportsResume = "bytes".equals(con.getHeaderField(HttpHeaders.ACCEPT_RANGES));
 
         //Resumable downloads not supported, just use default behaviour
-        if (downloadSize < 0L)
-            super.saveUrlToTempFile(url, tempFile);
+        if (!supportsResume || downloadSize < 0L)
+        {
+            super.saveUrlToFileFromUrlConnection(url, tempFile, con);
+            return;
+        }
 
         //TODO maybe some connection timeout settings too on the URL connection, (plus the one we recreate down there)
 
-        boolean supportsResume = "bytes".equals(con.getHeaderField(HttpHeaders.ACCEPT_RANGES));
         long totalBytesSaved = 0L;
 
         try (OutputStream saveOs = Files.newOutputStream(tempFile))
@@ -65,20 +68,15 @@ public class ResumableFileDownloader extends SimpleFileDownloader
 
                     if (curBytesSaved > 0L && totalBytesSaved < downloadSize)
                     {
-                        if (!supportsResume)
-                        {
-                            throw new IOException("File download incomplete (" + totalBytesSaved + " of " +
-                                                  downloadSize + ") and server does not support resuming downloads.");
-                        }
-
                         log.warn("Download was cut short (" + totalBytesSaved + " of " +
                                  downloadSize + " saved), attempting to resume download");
 
                         //Even though we are in a try-with-resources block, close before we try to make a new connection
                         downloadIs.close();
 
+                        //Prepare the next request that will be used in the next iteration of the do-while loop
                         con = url.openConnection();
-                        con.setRequestProperty("Range", "bytes=" + totalBytesSaved + "-");
+                        con.setRequestProperty(HttpHeaders.RANGE, "bytes=" + totalBytesSaved + "-");
 
                         long expectedRangeRequestContentLength = downloadSize - totalBytesSaved;
 
