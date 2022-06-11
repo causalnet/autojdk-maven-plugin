@@ -78,7 +78,7 @@ public class SimpleFileDownloader implements FileDownloader
 
             //If we have a valid expected file size, check it
             if (expectedSize >= 0L && expectedSize != numBytesCopied)
-                throw new IOException("Download of " + url.toExternalForm() + " truncated - expected " + expectedSize + "bytes but downloaded only " + numBytesCopied + " bytes");
+                throw new TruncatedDownloadException(url, expectedSize, numBytesCopied);
         }
     }
 

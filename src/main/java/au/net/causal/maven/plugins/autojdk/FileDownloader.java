@@ -6,6 +6,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * Downloads a file from a remote URL to a temporary storage space on the local system.
@@ -19,7 +20,8 @@ public interface FileDownloader
      * @param url the URL to download.
      *            
      * @return the temporary downloaded file.
-     * 
+     *
+     * @throws TruncatedDownloadException if the file was not completely downloaded.
      * @throws IOException if an error occurs.
      */
     public Download downloadFile(URL url)
@@ -74,6 +76,15 @@ public interface FileDownloader
         throws IOException
         {
             Files.deleteIfExists(file);
+        }
+
+        @Override
+        public String toString()
+        {
+            return new StringJoiner(", ", Download.class.getSimpleName() + "[", "]")
+                    .add("url=" + url)
+                    .add("file=" + file)
+                    .toString();
         }
     }
 }
