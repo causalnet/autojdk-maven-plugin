@@ -38,7 +38,7 @@ public class PrepareMojo extends AbstractMojo
             //Let's see if we can inject a toolchain from a plugin
             ToolchainModel tcm = new ToolchainModel();
             tcm.setType("jdk");
-            tcm.addProvide("version", "18.0.1.1");
+            tcm.addProvide("version", "18");
             tcm.addProvide("vendor", "openjdk");
             Xpp3Dom conf = new Xpp3Dom("configuration");
             Xpp3Dom child = new Xpp3Dom("jdkHome");
