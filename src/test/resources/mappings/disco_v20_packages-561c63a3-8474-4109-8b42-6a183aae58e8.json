@@ -1,0 +1,19 @@
+{
+  "id" : "561c63a3-8474-4109-8b42-6a183aae58e8",
+  "name" : "disco_v20_packages",
+  "request" : {
+    "url" : "/disco/v2.0/packages?version=17&latest=all_of_version&operating_system=windows&architecture=amd64&bitness=64&package_type=jdk&directly_downloadable=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v20_packages-561c63a3-8474-4109-8b42-6a183aae58e8.json",
+    "headers" : {
+      "Date" : "Sun, 12 Jun 2022 23:24:39 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "561c63a3-8474-4109-8b42-6a183aae58e8",
+  "persistent" : true,
+  "insertionIndex" : 3
+}
