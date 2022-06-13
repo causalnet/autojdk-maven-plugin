@@ -42,7 +42,12 @@ public class PrepareMojo extends AbstractMojo
             tcm.addProvide("vendor", "openjdk");
             Xpp3Dom conf = new Xpp3Dom("configuration");
             Xpp3Dom child = new Xpp3Dom("jdkHome");
-            child.setValue("C:\\Program Files\\OpenJDK\\jdk-18.0.1.1");
+
+            String java18Home = System.getenv("JAVA18_HOME");
+            if (java18Home == null)
+                java18Home = "C:\\Program Files\\OpenJDK\\jdk-18.0.1.1";
+
+            child.setValue(java18Home);
             conf.addChild(child);
             tcm.setConfiguration(conf);
 
