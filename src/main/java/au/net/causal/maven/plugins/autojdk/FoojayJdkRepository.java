@@ -129,8 +129,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
     private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange versionRange)
     {
-        Semver javaVersion = pkg.getJavaVersion();
-        String javaVersionString = javaVersion.toString().replace('+', '-'); //Maven cannot deal with '+' in version numbers well
+        FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
+        String javaVersionString = artifactForPackage.getVersion(); //Version number translation happens in FoojayArtifact
         ArtifactVersion javaVersionAsArtifactVersion = new DefaultArtifactVersion(javaVersionString);
         List<? extends ArtifactVersion> javaVersionsExpanded = versionExpander.expandVersions(javaVersionAsArtifactVersion);
 

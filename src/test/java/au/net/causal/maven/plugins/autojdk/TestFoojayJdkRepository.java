@@ -9,6 +9,7 @@ import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
@@ -204,6 +205,18 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 
         verify(repositorySystem, times(2)).resolveArtifact(any(), any());
         verify(fileDownloader).downloadFile(any());
+
+        //Verify the downloaded file was actually installed to the local repo
+        verify(repositorySystem).install(any(), argThat(ir ->
+        {
+            assertThat(ir.getArtifacts()).hasSize(1);
+            Artifact artifact = ir.getArtifacts().iterator().next();
+            assertThat(artifact.getFile()).isEqualTo(theUploadedFile.toFile());
+            assertThat(artifact.getGroupId()).isEqualTo("au.net.causal.autojdk.jdk");
+            assertThat(artifact.getArtifactId()).isEqualTo("zulu");
+            assertThat(artifact.getVersion()).startsWith("17.0.2"); //Depending on search result, might have suffix
+            return true;
+        }));
     }
 
     /**

@@ -24,7 +24,15 @@ public class FoojayArtifact implements JdkArtifact
     @Override
     public String getVersion()
     {
-        return foojayPkg.getJavaVersion().toString();
+        return mavenSafeVersionFromPkgVersion(foojayPkg.getJavaVersion().toString());
+    }
+
+    /**
+     * Translate '+' to '-' because Maven really doesn't deal with '+' in version numbers well.
+     */
+    private static String mavenSafeVersionFromPkgVersion(String pkgVersion)
+    {
+        return pkgVersion.replace('+', '-');
     }
 
     @Override
