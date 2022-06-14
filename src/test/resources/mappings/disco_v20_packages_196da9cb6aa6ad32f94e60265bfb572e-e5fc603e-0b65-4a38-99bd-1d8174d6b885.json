@@ -1,0 +1,19 @@
+{
+  "id" : "e5fc603e-0b65-4a38-99bd-1d8174d6b885",
+  "name" : "disco_v20_packages_196da9cb6aa6ad32f94e60265bfb572e",
+  "request" : {
+    "url" : "/disco/v2.0/packages/196da9cb6aa6ad32f94e60265bfb572e",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\n  \"result\":[\n  {\"id\":\"196da9cb6aa6ad32f94e60265bfb572e\",\"archive_type\":\"zip\",\"distribution\":\"zulu\",\"major_version\":17,\"java_version\":\"17.0.2+8\",\"distribution_version\":\"17.32.13\",\"jdk_version\":17,\"latest_build_available\":false,\"release_status\":\"ga\",\"term_of_support\":\"lts\",\"operating_system\":\"windows\",\"lib_c_type\":\"c_std_lib\",\"architecture\":\"x64\",\"fpu\":\"unknown\",\"package_type\":\"jdk\",\"javafx_bundled\":false,\"directly_downloadable\":true,\"filename\":\"zulu17.32.13-ca-jdk17.0.2-win_x64.zip\",\"ephemeral_id\":\"196da9cb6aa6ad32f94e60265bfb572e\",\"links\":{\n\"pkg_info_uri\":\"https://api.foojay.io/disco/v2.0/ephemeral_ids/196da9cb6aa6ad32f94e60265bfb572e\",\"pkg_download_redirect\":\"https://api.foojay.io/disco/v2.0/ephemeral_ids/196da9cb6aa6ad32f94e60265bfb572e/redirect\"},\"free_use_in_production\":true,\"tck_tested\":\"yes\",\"tck_cert_uri\":\"https://cdn.azul.com/zulu/pdf/cert.zulu17.32.13-ca-jdk17.0.2-win_x64.zip.pdf\",\"aqavit_certified\":\"unknown\",\"aqavit_cert_uri\":\"\",\"size\":194319401,\"feature\":[]}\n  ],\n  \"message\":\"\"\n}",
+    "headers" : {
+      "Date" : "Tue, 14 Jun 2022 11:39:29 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "e5fc603e-0b65-4a38-99bd-1d8174d6b885",
+  "persistent" : true,
+  "insertionIndex" : 27
+}

@@ -9,17 +9,25 @@ import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResolutionException;
+import org.eclipse.aether.resolution.ArtifactResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.net.URL;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TestFoojayJdkRepository extends AbstractDiscoTestCase
@@ -37,6 +45,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 
     @BeforeEach
     private void setUp()
+    throws Exception
     {
         DiscoClient discoClient = new DiscoClient();
         jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader);
@@ -151,6 +160,50 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                 .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu")) //canonical name, not the same as input vendor
                 .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
+    @Test
+    void testDownload(@TempDir Path tempDir)
+    throws Exception
+    {
+        Path theUploadedFile = tempDir.resolve("jdk.zip");
+
+        //Never find anything in the local repo on first resolve attempt, but after it is added to the local repo
+        //we can then find it on the 2nd resolve attempt
+        when(repositorySystem.resolveArtifact(any(), any()))
+                //First lookup will fail
+                .thenThrow(ArtifactResolutionException.class)
+                //Second lookup done once file is uploaded
+                .thenAnswer(inv -> {
+                    ArtifactRequest req = inv.getArgument(1, ArtifactRequest.class);
+                    return new ArtifactResult(req).setArtifact(req.getArtifact().setFile(theUploadedFile.toFile()));
+                });
+
+        when(fileDownloader.downloadFile(any())).thenAnswer(invocation -> new FileDownloader.Download(
+                invocation.getArgument(0, URL.class),
+                theUploadedFile
+        ));
+
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                                                        VersionRange.createFromVersionSpec("17.0.2"),
+                                                        Architecture.AMD64,
+                                                        OperatingSystem.WINDOWS,
+                                                        "zulu"));
+
+        //There are 2 results, one with JavaFX and one without - so let's pick one for consistency
+        FoojayArtifact result = results.stream()
+                                       .filter(a -> Boolean.FALSE.equals(a.getFoojayPkg().isJavaFXBundled()))
+                                       .findFirst()
+                                       .orElseThrow();
+
+        JdkArchive download = jdkRepository.resolveArchive(result);
+
+        assertThat(download.getFile()).isEqualTo(theUploadedFile.toFile());
+        assertThat(download.getArtifact().getVendor()).isEqualToIgnoringCase("zulu");
+        assertThat(download.getArtifact().getVersion()).startsWith("17.0.2");
+
+        verify(repositorySystem, times(2)).resolveArtifact(any(), any());
+        verify(fileDownloader).downloadFile(any());
     }
 
     /**

@@ -1,0 +1,19 @@
+{
+  "id" : "bf5ea5b6-4450-41ec-8774-173417711a19",
+  "name" : "disco_v20_ephemeral_ids_196da9cb6aa6ad32f94e60265bfb572e",
+  "request" : {
+    "url" : "/disco/v2.0/ephemeral_ids/196da9cb6aa6ad32f94e60265bfb572e",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\n  \"result\":[\n    {\n    \"filename\":\"zulu17.32.13-ca-jdk17.0.2-win_x64.zip\",\n    \"direct_download_uri\":\"https://cdn.azul.com/zulu/bin/zulu17.32.13-ca-jdk17.0.2-win_x64.zip\",\n    \"download_site_uri\":\"\",\n    \"signature_uri\":\"\"\n  }\n    ],\n  \"message\":\"\"\n}",
+    "headers" : {
+      "Date" : "Tue, 14 Jun 2022 11:39:30 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "bf5ea5b6-4450-41ec-8774-173417711a19",
+  "persistent" : true,
+  "insertionIndex" : 28
+}

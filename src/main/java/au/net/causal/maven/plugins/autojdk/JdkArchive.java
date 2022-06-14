@@ -23,4 +23,12 @@ public class JdkArchive
     {
         return file;
     }
+
+    @Override
+    public String toString() {
+        return "JdkArchive{" +
+                "artifact=" + artifact +
+                ", file=" + file +
+                '}';
+    }
 }
