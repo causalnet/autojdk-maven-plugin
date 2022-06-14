@@ -111,6 +111,48 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
 
+    @Test
+    void searchWithVendor()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("17.0.2"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                "zulu"));
+
+        results.forEach(System.out::println);
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().startsWith("17.0.2"))
+                .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu"))
+                .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
+    @Test
+    void searchWithVendorSynonym()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("17.0.2"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                "zulucore"));
+
+        results.forEach(System.out::println);
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().startsWith("17.0.2"))
+                .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu")) //canonical name, not the same as input vendor
+                .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
     /**
      * Searching with version criteria that requires multiple steps.
      */
@@ -218,6 +260,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         //Might have more, but this amount of checking is enough
     }
 
+
+
     @Nested
     class IsArtifactMajorOnly
     {
@@ -229,7 +273,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         }
 
         @Test
-        void inotOnlyMajor()
+        void notOnlyMajor()
         {
             boolean result = FoojayJdkRepository.isArtifactVersionMajorOnly(new DefaultArtifactVersion("1.0"));
             assertThat(result).isFalse();

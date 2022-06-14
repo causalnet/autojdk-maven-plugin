@@ -7,6 +7,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
+import io.foojay.api.discoclient.pkg.Distribution;
 import io.foojay.api.discoclient.pkg.MajorVersion;
 import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.pkg.Scope;
@@ -64,10 +65,17 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     {
         List<VersionNumberAndLatest> foojaySearch = versionRangeToSearchNumbers(searchRequest.getVersionRange());
 
+        //If a vendor was specified, attempt to resolve
+        List<Distribution> searchDistributions;
+        if (searchRequest.getVendor() == null)
+            searchDistributions = null;
+        else
+            searchDistributions = Collections.singletonList(resolveSearchDistributionFromVendor(searchRequest.getVendor()));
+
         for (VersionNumberAndLatest vlCriteria : foojaySearch)
         {
             List<Pkg> searchResults = discoClient.getPkgs(
-                                                    null,
+                                                    searchDistributions,
                                                     vlCriteria.getVersionNumber(),
                                                     vlCriteria.getLatest(),
                                                     searchRequest.getOperatingSystem(),
@@ -98,6 +106,25 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
         //If we get here no searches found anything
         return Collections.emptyList();
+    }
+
+    /**
+     * Given a vendor, return the matching distribution or generate a new one suitable for using with the
+     * search API.
+     *
+     * @param vendor the vendor to resolve.
+     *
+     * @return a known distribution, or a generated one if the distribution could not be resolved.
+     */
+    private Distribution resolveSearchDistributionFromVendor(String vendor)
+    {
+        //Do not use DiscoClient.getDistributionFromText() since it only uses classpath resource
+        //and we want to match onto live up-to-date remote data
+        return discoClient.getDistributions()
+                          .stream()
+                          .filter(distribution -> distribution.getFromText(vendor) != null)
+                          .findFirst()
+                          .orElse(new Distribution(vendor, vendor, vendor));
     }
 
     private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange versionRange)
