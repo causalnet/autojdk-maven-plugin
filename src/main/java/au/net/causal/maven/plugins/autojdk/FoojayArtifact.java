@@ -57,4 +57,10 @@ public class FoojayArtifact implements JdkArtifact
     {
         return foojayPkg;
     }
+
+    @Override
+    public String toString()
+    {
+        return getFoojayPkg().toString();
+    }
 }

@@ -1,9 +1,5 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.github.tomakehurst.wiremock.recording.RecordSpecBuilder;
-import com.google.common.io.Resources;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.Bitness;
 import eu.hansolo.jdktools.Latest;
@@ -11,90 +7,25 @@ import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
-import io.foojay.api.discoclient.PropertyManager;
 import io.foojay.api.discoclient.pkg.Distribution;
 import io.foojay.api.discoclient.pkg.Pkg;
-import io.foojay.api.discoclient.util.Constants;
 import io.foojay.api.discoclient.util.Helper;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
-import static com.github.tomakehurst.wiremock.stubbing.StubImport.*;
 import static org.assertj.core.api.Assertions.*;
 
 /**
  * Test Foojay disco client but use Wiremock playback to avoid smashing their server in our tests.
- * When run with {@link #WIREMOCK_RECORD} as false (the default) it will use a previously recorded session and avoid
+ * When run with {@link AbstractDiscoTestCase#WIREMOCK_RECORD} as false (the default) it will use a previously recorded session and avoid
  * hitting their servers at all.  Turning it to true will instead hit the real server and also record responses that can be played back later.
  * Recording may be required when changing test code since different services may be hit.
  */
-@WireMockTest
-class TestDisco
+class TestDisco extends AbstractDiscoTestCase
 {
-    /**
-     * Set this to true to record from the real system so we can play back later.
-     */
-    private static final boolean WIREMOCK_RECORD = false;
-
-    private static final Properties originalProperties = new Properties();
-
-    @BeforeAll
-    private static void setUpDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
-    {
-        Properties properties = PropertyManager.INSTANCE.getProperties();
-        originalProperties.putAll(properties);
-
-        properties.setProperty(Constants.PROPERTY_KEY_DISTRIBUTION_JSON_URL, wireMockRuntimeInfo.getHttpBaseUrl() + "/distributions.json");
-        properties.setProperty(Constants.PROPERTY_KEY_DISCO_URL, wireMockRuntimeInfo.getHttpBaseUrl());
-    }
-
-    @AfterAll
-    private static void restoreDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
-    {
-        Properties properties = PropertyManager.INSTANCE.getProperties();
-        properties.putAll(originalProperties);
-        originalProperties.clear();
-    }
-
-    @BeforeEach
-    private void setUpWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
-    throws IOException
-    {
-        if (WIREMOCK_RECORD)
-        {
-            wireMockRuntimeInfo.getWireMock().importStubMappings(stubImport());
-            wireMockRuntimeInfo.getWireMock().startStubRecording(
-                    new RecordSpecBuilder().forTarget("https://api.foojay.io")
-                                           .ignoreRepeatRequests()
-                                           .onlyRequestsMatching(anyRequestedFor(urlMatching(".*/disco/.*"))));
-        }
-
-        //When getting remote distributions, just use Foojay's local resource
-        //Normally this comes from a github page
-        stubFor(get(urlMatching("/distributions.json")).willReturn(aResponse().withBody(Resources.toByteArray(DiscoClient.class.getResource(Constants.DISTRIBUTION_JSON)))));
-
-        //Record from api.foojay.io which is the real server
-        if (WIREMOCK_RECORD)
-            stubFor(get(urlMatching("/.*")).willReturn(aResponse().proxiedFrom("https://api.foojay.io")));
-    }
-
-    @AfterEach
-    private void finishWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
-    {
-        if (WIREMOCK_RECORD)
-            wireMockRuntimeInfo.getWireMock().stopStubRecording();
-    }
-
     /**
      * Tests reading distributions.
      */

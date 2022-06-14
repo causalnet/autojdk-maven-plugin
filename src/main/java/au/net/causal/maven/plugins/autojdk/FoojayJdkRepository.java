@@ -1,6 +1,20 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableList;
+import eu.hansolo.jdktools.Latest;
+import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.versioning.Semver;
+import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
+import io.foojay.api.discoclient.pkg.MajorVersion;
+import io.foojay.api.discoclient.pkg.Pkg;
+import io.foojay.api.discoclient.pkg.Scope;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
+import org.apache.maven.artifact.versioning.Restriction;
+import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.toolchain.RequirementMatcherFactory;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -16,10 +30,15 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 {
@@ -27,6 +46,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;
     private final FileDownloader fileDownloader;
+
+    private final JdkVersionExpander versionExpander = new JdkVersionExpander();
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                FileDownloader fileDownloader)
@@ -38,14 +59,130 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     }
 
     @Override
-    public Collection<? extends FoojayArtifact> search(JdkSearchRequest searchRequest) throws JdkRepositoryException
+    public Collection<? extends FoojayArtifact> search(JdkSearchRequest searchRequest)
+    throws JdkRepositoryException
     {
-        //TODO
-        return null;
+        List<VersionNumberAndLatest> foojaySearch = versionRangeToSearchNumbers(searchRequest.getVersionRange());
+
+        for (VersionNumberAndLatest vlCriteria : foojaySearch)
+        {
+            List<Pkg> searchResults = discoClient.getPkgs(
+                                                    null,
+                                                    vlCriteria.getVersionNumber(),
+                                                    vlCriteria.getLatest(),
+                                                    searchRequest.getOperatingSystem(),
+                                                    null,
+                                                    searchRequest.getArchitecture(),
+                                                    searchRequest.getArchitecture().getBitness(),
+                                                    null, /* archive type we want is both .zip and .tar.gz but can't specify both with this Java API */
+                                                    PackageType.JDK,
+                                                    null,
+                                                    true,
+                                                    null,
+                                                    null,
+                                                    null,
+                                                    ImmutableList.of(Scope.DIRECTLY_DOWNLOADABLE, Scope.BUILD_OF_OPEN_JDK, Scope.FREE_TO_USE_IN_PRODUCTION),
+                                                    null);
+
+            List<FoojayArtifact> results =  searchResults.stream()
+                                                         .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
+                                                         .map(FoojayArtifact::new)
+                                                         .filter(artifact -> artifact.getArchiveType() != null) //Any not-understood archive type is discarded
+                                                         .collect(Collectors.toList());
+
+            //If we have at least one result after filtering, use that
+            //Otherwise go to the next iteration / search number which might get more results
+            if (!results.isEmpty())
+                return results;
+        }
+
+        //If we get here no searches found anything
+        return Collections.emptyList();
+    }
+
+    private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange versionRange)
+    {
+        Semver javaVersion = pkg.getJavaVersion();
+        String javaVersionString = javaVersion.toString().replace('+', '-'); //Maven cannot deal with '+' in version numbers well
+        ArtifactVersion javaVersionAsArtifactVersion = new DefaultArtifactVersion(javaVersionString);
+        List<? extends ArtifactVersion> javaVersionsExpanded = versionExpander.expandVersions(javaVersionAsArtifactVersion);
+
+        for (ArtifactVersion curJavaVersion : javaVersionsExpanded)
+        {
+            boolean matched = RequirementMatcherFactory.createVersionMatcher(curJavaVersion.toString()).matches(versionRange.toString());
+            if (matched)
+                return true;
+        }
+
+        //Nothing matched
+        return false;
+    }
+
+    /**
+     * Converts a version range from Maven into one or more version number search criteria that can be searched for in Foojay.
+     *
+     * @param versionRange version range to convert.
+     *
+     * @return a list of version numbers that can be searched for.  Null elements may be returned (which in Foojay means no restriction by version number).
+     */
+    protected List<VersionNumberAndLatest> versionRangeToSearchNumbers(VersionRange versionRange)
+    {
+        //Recommended version is just a version number and no restrictions, e.g. "17.0.2"
+        //If there is a recommended version and not a range in the range, use that
+        if (versionRange.getRecommendedVersion() != null)
+        {
+            //If the recommended version is just a major version, then we can do a latest=available search to only get back the latest JDKs of this major version
+            Latest latest;
+            if (isArtifactVersionMajorOnly(versionRange.getRecommendedVersion()))
+                latest = Latest.AVAILABLE; //Latest for the major version only
+            else
+                latest = Latest.ALL_OF_VERSION; //Get back all versions for the major version
+
+            //With the foojay API if you pass more than a major version into search it is ignored for some reason...
+            //So let's just use major version numbers for searching JDKs in there
+            //and filter results on our side
+            return Collections.singletonList(new VersionNumberAndLatest(new VersionNumber(versionRange.getRecommendedVersion().getMajorVersion()), latest));
+        }
+
+        //Version range has restrictions / exclusions
+        //Use major version of the first lower bound for the first search, then search everything if that fails (but it's slow!)
+        List<VersionNumber> lowerBounds = new ArrayList<>();
+        for (Restriction restriction : versionRange.getRestrictions())
+        {
+            if (restriction.getLowerBound() != null)
+                lowerBounds.add(new VersionNumber(restriction.getLowerBound().getMajorVersion()));
+        }
+        Collections.sort(lowerBounds);
+
+        List<VersionNumberAndLatest> searchNumberCriteria = new ArrayList<>();
+        VersionNumber lowestBound = null;
+        if (!lowerBounds.isEmpty())
+        {
+            lowestBound = lowerBounds.get(0);
+            searchNumberCriteria.add(new VersionNumberAndLatest(lowestBound, Latest.ALL_OF_VERSION)); //The lowest lower bound major version found
+        }
+
+        //Now expand for all major versions above what we started with
+        List<MajorVersion> availableMajorVersions = new ArrayList<>(discoClient.getAllMajorVersions());
+        availableMajorVersions.sort(Comparator.comparing(MajorVersion::getAsInt));
+        for (MajorVersion majorVersion : availableMajorVersions)
+        {
+            if (lowestBound == null || lowestBound.isSmallerThan(majorVersion.getVersionNumber()))
+                searchNumberCriteria.add(new VersionNumberAndLatest(majorVersion.getVersionNumber(), Latest.ALL_OF_VERSION));
+        }
+
+        return searchNumberCriteria;
+    }
+
+    @VisibleForTesting
+    static boolean isArtifactVersionMajorOnly(ArtifactVersion artifactVersion)
+    {
+        return String.valueOf(artifactVersion.getMajorVersion()).equals(artifactVersion.toString());
     }
 
     @Override
-    public JdkArchive resolveArchive(FoojayArtifact jdkArtifact) throws JdkRepositoryException
+    public JdkArchive resolveArchive(FoojayArtifact jdkArtifact)
+    throws JdkRepositoryException
     {
         //First check if we don't already have a cached version in the local repo
         Artifact mavenArtifact = mavenArtifactForJdkArtifact(jdkArtifact);
@@ -124,8 +261,49 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         return jdkArtifact.getOperatingSystem().name().toLowerCase(Locale.ROOT) + "_" + jdkArtifact.getArchitecture().name().toLowerCase(Locale.ROOT);
     }
 
-    private String mavenExtensionForJdkArtifact(JdkArtifact jdkArtifact)
+    protected static class VersionNumberAndLatest
     {
-        return jdkArtifact.getArchiveType().name();
+        private final VersionNumber versionNumber;
+        private final Latest latest;
+
+        public VersionNumberAndLatest(VersionNumber versionNumber, Latest latest)
+        {
+            this.versionNumber = versionNumber;
+            this.latest = latest;
+        }
+
+        public VersionNumber getVersionNumber()
+        {
+            return versionNumber;
+        }
+
+        public Latest getLatest()
+        {
+            return latest;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof VersionNumberAndLatest)) return false;
+            VersionNumberAndLatest that = (VersionNumberAndLatest) o;
+            return Objects.equals(getVersionNumber(), that.getVersionNumber()) && getLatest() == that.getLatest();
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getVersionNumber(), getLatest());
+        }
+
+        @Override
+        public String toString()
+        {
+            return new StringJoiner(", ", "[", "]")
+                    .add("versionNumber=" + versionNumber)
+                    .add("latest=" + (latest == null ? null : latest.name()))
+                    .toString();
+        }
     }
 }
