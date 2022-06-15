@@ -20,6 +20,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.nio.file.Path;
@@ -33,6 +35,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TestFoojayJdkRepository extends AbstractDiscoTestCase
 {
+    private static final Logger log = LoggerFactory.getLogger(TestFoojayJdkRepository.class);
+
     private FoojayJdkRepository jdkRepository;
 
     @Mock
@@ -46,9 +50,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 
     @BeforeEach
     private void setUp()
-    throws Exception
     {
-        DiscoClient discoClient = new DiscoClient();
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
         jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader);
     }
 
@@ -64,8 +67,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                                         Architecture.AMD64,
                                                                         OperatingSystem.WINDOWS,
                                                                         null));
-
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 
@@ -88,7 +90,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                                         OperatingSystem.WINDOWS,
                                                                         null));
 
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 
@@ -111,7 +113,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 OperatingSystem.WINDOWS,
                 null));
 
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 
@@ -131,7 +133,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 OperatingSystem.WINDOWS,
                 "zulu"));
 
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 
@@ -152,7 +154,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 OperatingSystem.WINDOWS,
                 "zulucore"));
 
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 
@@ -233,7 +235,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 OperatingSystem.WINDOWS,
                 null));
 
-        results.forEach(System.out::println);
+        results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
 

@@ -17,6 +17,7 @@ import java.util.Properties;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.stubbing.StubImport.*;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * Superclass of discovery client test cases that use WireMock to avoid having to do real network requests.
@@ -74,6 +75,16 @@ abstract class AbstractDiscoTestCase
         //Record from api.foojay.io which is the real server
         if (WIREMOCK_RECORD)
             stubFor(get(urlMatching("/.*")).willReturn(aResponse().proxiedFrom("https://api.foojay.io")));
+
+        //Preload distributions into distro client
+        //It's static and racey and we don't want this to kick off after tests have finished in a background thread after
+        //wiremock is torn down - it can result in random "Request was not matched" warnings
+
+        //Wait for client to be initialized - this call awaits distributions to be initialized and read from the network (actually wiremock), statically
+        //When it is done, no more disco client constructors should be called to avoid the race condition
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
+
+        assertThat(discoClient.isInitialzed()).isTrue();
     }
 
     @AfterEach

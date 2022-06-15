@@ -11,6 +11,8 @@ import io.foojay.api.discoclient.pkg.Distribution;
 import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.util.Helper;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -26,19 +28,21 @@ import static org.assertj.core.api.Assertions.*;
  */
 class TestDisco extends AbstractDiscoTestCase
 {
+    private static final Logger log = LoggerFactory.getLogger(TestDisco.class);
+
     /**
      * Tests reading distributions.
      */
     @Test
     void testGetDistributions()
     {
-        DiscoClient discoClient = new DiscoClient();
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
         List<Distribution> distributions = discoClient.getDistributions();
-        distributions.forEach(System.out::println);
+        distributions.forEach(d -> log.debug(d.toString()));
 
         //Do it twice to check that wiremock is mocking multi-calls properly
         distributions = discoClient.getDistributions();
-        distributions.forEach(System.out::println);
+        distributions.forEach(d -> log.debug(d.toString()));
     }
 
     /**
@@ -47,7 +51,7 @@ class TestDisco extends AbstractDiscoTestCase
     @Test
     void testInitialization()
     {
-        DiscoClient discoClient = new DiscoClient();
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
 
         //Wait for client to be initialized - this call awaits distributions to be initialized
         //If you don't do this you get a race condition where if you don't wait for the async stuff the return map is empty
@@ -55,7 +59,7 @@ class TestDisco extends AbstractDiscoTestCase
 
         //Now pull in
         Map<String, Distribution> distros = discoClient.getDistros();
-        System.out.println(distros);
+        log.debug("Distros: " + distros);
         assertThat(distros).isNotEmpty();
     }
 
@@ -65,13 +69,23 @@ class TestDisco extends AbstractDiscoTestCase
     @Test
     void testGetPackagesAvailable()
     {
-        DiscoClient discoClient = new DiscoClient();
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
 
         List<Pkg> pkgResult = discoClient.getPkgs(null, new VersionNumber(17), Latest.AVAILABLE, OperatingSystem.WINDOWS, null, Architecture.AMD64, Bitness.BIT_64, null, PackageType.JDK, null, true, null, null, null, null, null);
+        assertThat(pkgResult).isNotEmpty();
         for (Pkg r : pkgResult)
         {
-            System.out.println(r.getDistributionName() + ": ");
-            System.out.println(r);
+            try
+            {
+                log.debug(r.getDistributionName() + ": " + r);
+            }
+            catch (NullPointerException e)
+            {
+                System.err.println("Something went horribly wrong with it: ");
+                System.err.println(discoClient.getDistros());
+                throw e;
+            }
+
         }
     }
 
@@ -81,22 +95,20 @@ class TestDisco extends AbstractDiscoTestCase
     @Test
     void testGetPackagesAll()
     {
-        DiscoClient discoClient = new DiscoClient();
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
 
         List<Pkg> pkgResult = discoClient.getPkgs(null, new VersionNumber(17), Latest.ALL_OF_VERSION, OperatingSystem.WINDOWS, null, Architecture.AMD64, Bitness.BIT_64, null, PackageType.JDK, null, true, null, null, null, null, null);
         assertThat(pkgResult).isNotEmpty();
         for (Pkg r : pkgResult)
         {
-            System.out.println(r.getDistributionName() + ": ");
-            System.out.println(r);
+            log.debug(r.getDistributionName() + ": " + r);
         }
 
-        System.out.println("--------------------------------------------------------");
+        log.debug("--------------------------------------------------------");
 
         pkgResult.stream().filter(pkg -> pkg.getDistributionName().equals("ORACLE_OPEN_JDK")).forEach(pkg ->
         {
-            System.out.println(pkg.getDistributionName() + ": ");
-            System.out.println(pkg);
+            log.debug(pkg.getDistributionName() + ": " + pkg);
         });
     }
 
@@ -105,10 +117,10 @@ class TestDisco extends AbstractDiscoTestCase
     {
         //Could use these (local only) for groupId/artifactId generation for known JDKs
         Map<String, Distribution> dists = Helper.preloadDistributions().get();
+        assertThat(dists).isNotEmpty();
         for (Map.Entry<String, Distribution> entry : dists.entrySet())
         {
-            System.out.println(entry.getKey() + ":");
-            System.out.println(entry.getValue());
+            log.debug(entry.getKey() + ": " + entry.getValue());
         }
     }
 
@@ -116,8 +128,11 @@ class TestDisco extends AbstractDiscoTestCase
     void currentOs()
     {
         OperatingSystem os = eu.hansolo.jdktools.util.Helper.getOperatingSystem();
-        System.out.println("Current OS: " + os);
+        log.debug("Current OS: " + os);
         Architecture arch = eu.hansolo.jdktools.util.Helper.getArchitecture();
-        System.out.println("Arch: " + arch);
+        log.debug("Arch: " + arch);
+
+        assertThat(os).isNotNull();
+        assertThat(arch).isNotNull();
     }
 }
