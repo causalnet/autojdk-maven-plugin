@@ -18,7 +18,7 @@ public class FoojayArtifact implements JdkArtifact
     @Override
     public String getVendor()
     {
-        return foojayPkg.getDistributionName();
+        return foojayPkg.getDistribution().getApiString();
     }
 
     @Override

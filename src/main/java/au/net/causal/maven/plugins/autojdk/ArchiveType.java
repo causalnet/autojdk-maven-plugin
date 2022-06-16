@@ -16,4 +16,15 @@ public enum ArchiveType
     {
         return fileExtension;
     }
+
+    public static ArchiveType forFileExtension(String fileExtension)
+    {
+        for (ArchiveType archiveType : values())
+        {
+            if (archiveType.getFileExtension().equals(fileExtension))
+                return archiveType;
+        }
+
+        return null;
+    }
 }

@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.PackageType;
-import eu.hansolo.jdktools.versioning.Semver;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
 import io.foojay.api.discoclient.pkg.Distribution;
@@ -47,6 +46,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;
     private final FileDownloader fileDownloader;
+
+    private final String mavenArtifactGroupId = "au.net.causal.autojdk.jdk";
 
     private final JdkVersionExpander versionExpander = new JdkVersionExpander();
 
@@ -271,21 +272,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
     protected Artifact mavenArtifactForJdkArtifact(JdkArtifact jdkArtifact)
     {
-        return new DefaultArtifact("au.net.causal.autojdk.jdk",
-                                   mavenArtifactIdForJdkArtifact(jdkArtifact),
-                                   mavenClassifierForJdkArtifact(jdkArtifact),
-                                   jdkArtifact.getArchiveType().getFileExtension(),
-                                   jdkArtifact.getVersion());
-    }
-
-    private String mavenArtifactIdForJdkArtifact(JdkArtifact jdkArtifact)
-    {
-        return jdkArtifact.getVendor().toLowerCase(Locale.ROOT).replace('_', '-');
-    }
-
-    private String mavenClassifierForJdkArtifact(JdkArtifact jdkArtifact)
-    {
-        return jdkArtifact.getOperatingSystem().name().toLowerCase(Locale.ROOT) + "_" + jdkArtifact.getArchitecture().name().toLowerCase(Locale.ROOT);
+        return new MavenJdkArtifact(mavenArtifactGroupId, jdkArtifact).getArtifact();
     }
 
     protected static class VersionNumberAndLatest
