@@ -35,7 +35,7 @@ public class MavenJdkArtifact implements JdkArtifact
      */
     public MavenJdkArtifact(String groupId, String vendor, String version, Architecture architecture, OperatingSystem operatingSystem, ArchiveType archiveType)
     {
-        this(new DefaultArtifact(groupId, vendor, makeClassifier(operatingSystem, architecture), archiveType.getFileExtension(), version));
+        this(new DefaultArtifact(groupId, vendorToArtifactId(vendor), makeClassifier(operatingSystem, architecture), archiveType.getFileExtension(), version));
     }
 
     /**
@@ -123,6 +123,11 @@ public class MavenJdkArtifact implements JdkArtifact
         }
 
         return new OperatingSystemAndArchitecture(operatingSystem, architecture);
+    }
+
+    public static String vendorToArtifactId(String vendor)
+    {
+        return vendor;
     }
 
     /**

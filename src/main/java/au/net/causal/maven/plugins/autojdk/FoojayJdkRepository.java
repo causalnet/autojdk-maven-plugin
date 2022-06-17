@@ -47,17 +47,18 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     private final RepositorySystemSession repositorySystemSession;
     private final FileDownloader fileDownloader;
 
-    private final String mavenArtifactGroupId = "au.net.causal.autojdk.jdk";
+    private final String mavenArtifactGroupId;
 
     private final JdkVersionExpander versionExpander = new JdkVersionExpander();
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
-                               FileDownloader fileDownloader)
+                               FileDownloader fileDownloader, String mavenArtifactGroupId)
     {
         this.discoClient = Objects.requireNonNull(discoClient);
         this.repositorySystem = Objects.requireNonNull(repositorySystem);
         this.repositorySystemSession = Objects.requireNonNull(repositorySystemSession);
         this.fileDownloader = Objects.requireNonNull(fileDownloader);
+        this.mavenArtifactGroupId = Objects.requireNonNull(mavenArtifactGroupId);
     }
 
     @Override

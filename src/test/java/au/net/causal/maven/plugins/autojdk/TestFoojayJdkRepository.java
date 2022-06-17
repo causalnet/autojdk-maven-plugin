@@ -37,6 +37,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 {
     private static final Logger log = LoggerFactory.getLogger(TestFoojayJdkRepository.class);
 
+    private static final String JDK_GROUP_ID = "au.net.causal.autojdk.jdk";
+
     private FoojayJdkRepository jdkRepository;
 
     @Mock
@@ -52,7 +54,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     private void setUp()
     {
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
-        jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader);
+        jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID);
     }
 
     /**
@@ -214,7 +216,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
             assertThat(ir.getArtifacts()).hasSize(1);
             Artifact artifact = ir.getArtifacts().iterator().next();
             assertThat(artifact.getFile()).isEqualTo(theUploadedFile.toFile());
-            assertThat(artifact.getGroupId()).isEqualTo("au.net.causal.autojdk.jdk");
+            assertThat(artifact.getGroupId()).isEqualTo(JDK_GROUP_ID);
             assertThat(artifact.getArtifactId()).isEqualTo("zulu");
             assertThat(artifact.getVersion()).startsWith("17.0.2"); //Depending on search result, might have suffix
             return true;
