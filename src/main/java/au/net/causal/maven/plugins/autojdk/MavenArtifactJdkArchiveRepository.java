@@ -7,12 +7,16 @@ import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.*;
 import org.eclipse.aether.version.Version;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<MavenJdkArtifact>
 {
+    private static final Logger log = LoggerFactory.getLogger(MavenArtifactJdkArchiveRepository.class);
+
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;
     private final List<RemoteRepository> remoteRepositories;
@@ -37,6 +41,7 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         List<String> artifactIdsToSearch;
 
         //TODO we might have to be a bit tricky with version searching here - we need "11" to find "11.0.2", etc.
+        //  turn things like that into a range request [11, 12) just for searching versions?
 
         //Do we know the artifact ID?
         if (searchRequest.getVendor() == null)
@@ -66,6 +71,10 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
             try
             {
                 VersionRangeResult versionSearchResult = repositorySystem.resolveVersionRange(repositorySystemSession, versionSearchRequest);
+                for (Exception warningException : versionSearchResult.getExceptions())
+                {
+                    log.debug("Problem performing version search: " + warningException.getMessage(), warningException);
+                }
                 List<Version> foundVersions = versionSearchResult.getVersions();
 
                 for (Version foundVersion : foundVersions)
