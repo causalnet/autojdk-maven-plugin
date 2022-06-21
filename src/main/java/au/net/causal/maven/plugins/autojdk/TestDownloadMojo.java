@@ -40,66 +40,67 @@ public class TestDownloadMojo extends AbstractMojo
     @Parameter(defaultValue = "${project}", readonly = true)
     protected MavenProject project;
 
+    @Parameter(property = "autojdk.version")
+    private String jdkVersion;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException
     {
-        //runFromFoojay();
-        runFromLocalRepo();
+        //Calculate version if not specified
+        if (jdkVersion == null)
+            jdkVersion = "17";
+        //TODO actually calculate from project metadata or whatever
+
+        JdkSearchRequest searchRequest;
+        try
+        {
+            searchRequest = new JdkSearchRequest(VersionRange.createFromVersionSpec(jdkVersion), Architecture.X64, OperatingSystem.WINDOWS, "zulu");
+        }
+        catch (InvalidVersionSpecificationException e)
+        {
+            throw new MojoExecutionException("Invalid version: " + jdkVersion, e);
+        }
+
+        //runSearch(searchRequest, foojayJdkRepository());
+        runSearch(searchRequest, mavenJdkRepository());
     }
 
-    private void runFromFoojay()
-    throws MojoExecutionException
+    private FoojayJdkRepository foojayJdkRepository()
     {
         FileUtils.mkdir(project.getBuild().getDirectory());
         Path buildDirectory = Path.of(project.getBuild().getDirectory());
         FileDownloader downloader = new SimpleFileDownloader(buildDirectory);
-        FoojayJdkRepository jdkRepo = new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, downloader, "au.net.causal.autojdk.jdk");
+        return new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, downloader, "au.net.causal.autojdk.jdk");
+    }
 
+    private MavenArtifactJdkArchiveRepository mavenJdkRepository()
+    {
+        return new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, List.of(),
+                                                     "au.net.causal.autojdk.jdk",
+                                                     new VendorConfiguration(DiscoClientSingleton.discoClient()));
+    }
+
+    private <A extends JdkArtifact> void runSearch(JdkSearchRequest searchRequest, JdkArchiveRepository<A> jdkRepo)
+    throws MojoExecutionException
+    {
         try
         {
-            JdkSearchRequest request = new JdkSearchRequest(VersionRange.createFromVersionSpec("17"), Architecture.X64, OperatingSystem.WINDOWS, "zulu");
-            Collection<? extends FoojayArtifact> results = jdkRepo.search(request);
+            Collection<? extends A> results = jdkRepo.search(searchRequest);
 
-            System.out.println("Result count: " + results.size());
+            getLog().info("Result count: " + results.size());
 
-            for (FoojayArtifact result : results)
+            for (A result : results)
             {
-                System.out.println(result.getFoojayPkg());
+                getLog().info(result.getVendor() + ":" + result.getVersion() + ":" +
+                              result.getArchiveType().getFileExtension() +
+                              " (os=" + result.getOperatingSystem().getApiString() +
+                              ", arch=" + result.getArchitecture().getApiString() + ")");
             }
 
             JdkArchive resolved = jdkRepo.resolveArchive(results.iterator().next());
-            System.out.println("Resolved: " + resolved.getFile());
+            getLog().info("Resolved: " + resolved.getFile());
         }
-        catch (InvalidVersionSpecificationException | JdkRepositoryException e)
-        {
-            throw new MojoExecutionException("Error searching: " + e, e);
-        }
-    }
-
-    private void runFromLocalRepo()
-    throws MojoExecutionException
-    {
-        MavenArtifactJdkArchiveRepository jdkRepo = new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, List.of(), "au.net.causal.autojdk.jdk", new VendorConfiguration(DiscoClientSingleton.discoClient()));
-
-        try
-        {
-            JdkSearchRequest request = new JdkSearchRequest(VersionRange.createFromVersionSpec("17"), Architecture.X64, OperatingSystem.WINDOWS, "zulu");
-            Collection<? extends MavenJdkArtifact> results = jdkRepo.search(request);
-
-            System.out.println("Result count: " + results.size());
-
-            for (MavenJdkArtifact result : results)
-            {
-                System.out.println(result.getArtifact());
-            }
-
-            if (!results.isEmpty())
-            {
-                JdkArchive resolved = jdkRepo.resolveArchive(results.iterator().next());
-                System.out.println("Resolved: " + resolved.getFile());
-            }
-        }
-        catch (InvalidVersionSpecificationException | JdkRepositoryException e)
+        catch (JdkRepositoryException e)
         {
             throw new MojoExecutionException("Error searching: " + e, e);
         }
