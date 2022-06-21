@@ -101,7 +101,8 @@ public class TestDownloadMojo extends AbstractMojo
                 getLog().info(result.getVendor() + ":" + result.getVersion() + ":" +
                               result.getArchiveType().getFileExtension() +
                               " (os=" + result.getOperatingSystem().getApiString() +
-                              ", arch=" + result.getArchitecture().getApiString() + ")");
+                              ", arch=" + result.getArchitecture().getApiString() + ") " +
+                              result);
             }
 
             if (!results.isEmpty())

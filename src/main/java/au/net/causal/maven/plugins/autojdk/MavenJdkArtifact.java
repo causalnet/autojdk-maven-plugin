@@ -91,6 +91,12 @@ public class MavenJdkArtifact implements JdkArtifact
         return artifact;
     }
 
+    @Override
+    public String toString()
+    {
+        return getArtifact().toString();
+    }
+
     /**
      * Generates a classifier for the given JDK operating system and architecture.
      */
