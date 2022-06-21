@@ -10,6 +10,7 @@ import io.foojay.api.discoclient.pkg.Distribution;
 import io.foojay.api.discoclient.pkg.MajorVersion;
 import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.pkg.Scope;
+import jakarta.xml.bind.JAXB;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.Restriction;
@@ -254,6 +255,16 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                 ArtifactResult reresolveResult = repositorySystem.resolveArtifact(repositorySystemSession, reresolveRequest);
                 File jdkArchiveInLocalRepo = reresolveResult.getArtifact().getFile();
 
+                //Also upload metadata
+                Path metadataFile = downloadedFile.resolveSibling(downloadedFile.getFileName().toString() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION);
+                generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(jdkArtifact.getArchiveType())), metadataFile);
+                Artifact metadataArtifact = new DefaultArtifact(mavenArtifact.getGroupId(), mavenArtifact.getArtifactId(), mavenArtifact.getClassifier(), MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION, mavenArtifact.getVersion());
+                metadataArtifact = metadataArtifact.setFile(metadataFile.toFile());
+
+                InstallRequest metadataInstallRequest = new InstallRequest();
+                metadataInstallRequest.setArtifacts(Collections.singleton(metadataArtifact));
+                repositorySystem.install(repositorySystemSession, metadataInstallRequest);
+
                 return new JdkArchive(jdkArtifact, jdkArchiveInLocalRepo);
             }
             catch (InstallationException | ArtifactResolutionException e)
@@ -269,6 +280,11 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         {
             throw new JdkRepositoryException("Failed to download JDK: " + e.getMessage(), e);
         }
+    }
+
+    private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
+    {
+        JAXB.marshal(metadata, file.toFile());
     }
 
     protected Artifact mavenArtifactForJdkArtifact(JdkArtifact jdkArtifact)

@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import jakarta.xml.bind.JAXB;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -16,6 +17,8 @@ import java.util.stream.Collectors;
 public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<MavenJdkArtifact>
 {
     private static final Logger log = LoggerFactory.getLogger(MavenArtifactJdkArchiveRepository.class);
+
+    static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
 
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;
@@ -79,28 +82,45 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
 
                 for (Version foundVersion : foundVersions)
                 {
-                    for (ArchiveType curArchiveType : ArchiveType.values())
+                    String classifier = MavenJdkArtifact.makeClassifier(searchRequest.getOperatingSystem(), searchRequest.getArchitecture());
+                    MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(artifactIdToSearch, classifier, foundVersion);
+
+                    for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
                     {
                         MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(mavenArtifactGroupId, artifactIdToSearch, foundVersion.toString(), searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), curArchiveType);
-
-                        //For each found version, check if the artifact/extension/classifier exists
-                        VersionRequest versionRequest = new VersionRequest(curMavenJdkArtifact.getArtifact(), remoteRepositories, null);
-                        VersionResult versionResult = repositorySystem.resolveVersion(repositorySystemSession, versionRequest);
-
-                        //TODO what happens if a version of this one is not found?
-
-                        //If we get here we found it?
                         matchingArtifacts.add(curMavenJdkArtifact);
                     }
                 }
             }
-            catch (VersionRangeResolutionException | VersionResolutionException e)
+            catch (VersionRangeResolutionException e)
             {
                 throw new JdkRepositoryException("Error performing version search in Maven repository: " + e.getMessage(), e);
             }
         }
 
         return matchingArtifacts;
+    }
+
+    private MavenJdkArtifactMetadata readMavenJdkArtifactMetadata(String artifactId, String classifier, Version version)
+    {
+
+        Artifact metadataArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactId, classifier, AUTOJDK_METADATA_EXTENSION, version.toString());
+        ArtifactRequest metadataRequest = new ArtifactRequest(metadataArtifact, remoteRepositories, null);
+        try
+        {
+            ArtifactResult metadataResult = repositorySystem.resolveArtifact(repositorySystemSession, metadataRequest);
+
+            //TODO better management of JAXB context
+            return JAXB.unmarshal(metadataResult.getArtifact().getFile(), MavenJdkArtifactMetadata.class);
+        }
+        catch (ArtifactResolutionException e)
+        {
+            //Could not find metadata, so just ignore this search result
+            //TODO probably should turn this down because it's reasonable that Maven found artifacts for different OS/architecture
+            log.warn("Could not find JDK metadata for " + mavenArtifactGroupId + ":" + artifactId + ":" + classifier + ":" + version, e);
+
+            return new MavenJdkArtifactMetadata();
+        }
     }
 
     @Override

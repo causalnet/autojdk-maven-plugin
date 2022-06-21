@@ -23,8 +23,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -210,17 +212,22 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         verify(repositorySystem, times(2)).resolveArtifact(any(), any());
         verify(fileDownloader).downloadFile(any());
 
-        //Verify the downloaded file was actually installed to the local repo
-        verify(repositorySystem).install(any(), argThat(ir ->
+        //Verify the downloaded file was actually installed to the local repo as well as the metadata
+        List<File> installedFiles = new ArrayList<>();
+        verify(repositorySystem, times(2)).install(any(), argThat(ir ->
         {
             assertThat(ir.getArtifacts()).hasSize(1);
             Artifact artifact = ir.getArtifacts().iterator().next();
-            assertThat(artifact.getFile()).isEqualTo(theUploadedFile.toFile());
+            if (!installedFiles.contains(artifact.getFile())) //Workaround for mockito weirdness
+                installedFiles.add(artifact.getFile());
             assertThat(artifact.getGroupId()).isEqualTo(JDK_GROUP_ID);
             assertThat(artifact.getArtifactId()).isEqualTo("zulu");
             assertThat(artifact.getVersion()).startsWith("17.0.2"); //Depending on search result, might have suffix
             return true;
         }));
+        assertThat(installedFiles).hasSize(2);
+        assertThat(installedFiles).first().isEqualTo(theUploadedFile.toFile());
+        assertThat(installedFiles).last().isEqualTo(theUploadedFile.resolveSibling(theUploadedFile.getFileName() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION).toFile());
     }
 
     /**

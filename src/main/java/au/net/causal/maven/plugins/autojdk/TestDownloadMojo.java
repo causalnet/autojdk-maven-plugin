@@ -92,6 +92,12 @@ public class TestDownloadMojo extends AbstractMojo
             {
                 System.out.println(result.getArtifact());
             }
+
+            if (!results.isEmpty())
+            {
+                JdkArchive resolved = jdkRepo.resolveArchive(results.iterator().next());
+                System.out.println("Resolved: " + resolved.getFile());
+            }
         }
         catch (InvalidVersionSpecificationException | JdkRepositoryException e)
         {
