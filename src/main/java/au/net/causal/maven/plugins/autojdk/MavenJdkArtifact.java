@@ -11,6 +11,8 @@ import java.util.regex.Pattern;
 
 public class MavenJdkArtifact implements JdkArtifact
 {
+    private static final PlatformTools platformTools = new PlatformTools();
+
     private final Artifact artifact;
 
     /**
@@ -95,6 +97,10 @@ public class MavenJdkArtifact implements JdkArtifact
     @VisibleForTesting
     static String makeClassifier(OperatingSystem operatingSystem, Architecture architecture)
     {
+        //Don't want multiples of X64, AMD64, etc. in local maven repo, just want the canonical representation
+        //otherwise have to search all of them which, in a remote repo, will take longer with multiple requests
+        architecture = platformTools.canonicalArchitecture(architecture);
+
         return operatingSystem.getApiString() + "-" + architecture.getApiString();
     }
 
@@ -128,26 +134,6 @@ public class MavenJdkArtifact implements JdkArtifact
     public static String vendorToArtifactId(String vendor)
     {
         return vendor;
-    }
-
-    /**
-     * Find the canonical architecture given a possible synonym.  Some architectures might have synonyms, but it can be
-     * useful to always use the same architecture for all its synonyms.
-     *
-     * @param architecture architecture to canonicalize.
-     *
-     * @return the canonical architecture which is equal to {@code architecture} or has it as a synonym.
-     */
-    private static Architecture canonicalArchitecture(Architecture architecture)
-    {
-        for (Architecture a : Architecture.values())
-        {
-            if (a == architecture || a.getSynonyms().contains(architecture))
-                return a;
-        }
-
-        //Not found - should never happen
-        return architecture;
     }
 
     /**

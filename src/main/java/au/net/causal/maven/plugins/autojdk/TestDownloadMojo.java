@@ -40,8 +40,13 @@ public class TestDownloadMojo extends AbstractMojo
     @Parameter(defaultValue = "${project}", readonly = true)
     protected MavenProject project;
 
-    @Parameter(property = "autojdk.version")
+    @Parameter(property = "autojdk.version") //Default cannot be hardcoded, should be calculated from project if not specified
     private String jdkVersion;
+
+    @Parameter(property = "autojdk.vendor", defaultValue = "zulu")
+    private String jdkVendor;
+
+    private final PlatformTools systemDetector = new PlatformTools();
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException
@@ -54,7 +59,9 @@ public class TestDownloadMojo extends AbstractMojo
         JdkSearchRequest searchRequest;
         try
         {
-            searchRequest = new JdkSearchRequest(VersionRange.createFromVersionSpec(jdkVersion), Architecture.X64, OperatingSystem.WINDOWS, "zulu");
+            Architecture arch = systemDetector.getCurrentArchitecture();
+            OperatingSystem os = systemDetector.getCurrentOperatingSystem();
+            searchRequest = new JdkSearchRequest(VersionRange.createFromVersionSpec(jdkVersion), arch, os, jdkVendor);
         }
         catch (InvalidVersionSpecificationException e)
         {
@@ -81,7 +88,7 @@ public class TestDownloadMojo extends AbstractMojo
     }
 
     private <A extends JdkArtifact> void runSearch(JdkSearchRequest searchRequest, JdkArchiveRepository<A> jdkRepo)
-    throws MojoExecutionException
+    throws MojoExecutionException, MojoFailureException
     {
         try
         {
@@ -97,8 +104,13 @@ public class TestDownloadMojo extends AbstractMojo
                               ", arch=" + result.getArchitecture().getApiString() + ")");
             }
 
-            JdkArchive resolved = jdkRepo.resolveArchive(results.iterator().next());
-            getLog().info("Resolved: " + resolved.getFile());
+            if (!results.isEmpty())
+            {
+                JdkArchive resolved = jdkRepo.resolveArchive(results.iterator().next());
+                getLog().info("Resolved: " + resolved.getFile());
+            }
+            else
+                throw new MojoFailureException("No JDKs found for search request: " + searchRequest.getVendor() + ":" + searchRequest.getVersionRange() + ", os=" + searchRequest.getOperatingSystem().getApiString() + ", arch=" + searchRequest.getArchitecture().getApiString());
         }
         catch (JdkRepositoryException e)
         {
