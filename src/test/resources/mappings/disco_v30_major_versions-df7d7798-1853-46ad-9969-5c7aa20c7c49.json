@@ -1,0 +1,19 @@
+{
+  "id" : "df7d7798-1853-46ad-9969-5c7aa20c7c49",
+  "name" : "disco_v30_major_versions",
+  "request" : {
+    "url" : "/disco/v3.0/major_versions?ea=false",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_major_versions-df7d7798-1853-46ad-9969-5c7aa20c7c49.json",
+    "headers" : {
+      "Date" : "Wed, 22 Jun 2022 00:09:30 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "df7d7798-1853-46ad-9969-5c7aa20c7c49",
+  "persistent" : true,
+  "insertionIndex" : 3
+}

@@ -10,6 +10,7 @@ import io.foojay.api.discoclient.pkg.Distribution;
 import io.foojay.api.discoclient.pkg.MajorVersion;
 import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.pkg.Scope;
+import io.foojay.api.discoclient.util.PkgInfo;
 import jakarta.xml.bind.JAXB;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
@@ -229,12 +230,14 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         }
 
         //If we get here, could not find in the local repo so download it and save to local repo
-        String downloadUri = discoClient.getPkgDirectDownloadUri(jdkArtifact.getFoojayPkg().getId());
+        PkgInfo pkgInfo = discoClient.getPkgInfoByPkgId(jdkArtifact.getFoojayPkg().getId(), jdkArtifact.getFoojayPkg().getJavaVersion());
+        if (pkgInfo == null || pkgInfo.getDirectDownloadUri() == null) //Not found
+            throw new JdkRepositoryException("Download information not found for Foojay package " + jdkArtifact.getFoojayPkg().getId() + ":" + jdkArtifact.getFoojayPkg().getJavaVersion());
 
         //Download into local repository
 
         //First download to temp file
-        try (FileDownloader.Download download = fileDownloader.downloadFile(new URL(downloadUri)))
+        try (FileDownloader.Download download = fileDownloader.downloadFile(new URL(pkgInfo.getDirectDownloadUri())))
         {
             //Once file is downloaded, install to local repo
             Path downloadedFile = download.getFile();
@@ -273,7 +276,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         }
         catch (MalformedURLException e)
         {
-            throw new JdkRepositoryException("Invalid JDK download URL: " + downloadUri + " - " + e, e);
+            throw new JdkRepositoryException("Invalid JDK download URL: " + pkgInfo.getDirectDownloadUri() + " - " + e, e);
         }
         catch (IOException e)
         {
