@@ -9,7 +9,6 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
-import org.glassfish.jaxb.core.v2.TODO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
@@ -46,6 +45,7 @@ class TestJdkInstaller
     {
         //TODO need a better way of picking a filename - this is only temporary
         Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-windows-x64.zip");
+        //Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-linux-x64.tar.gz");
         Path jdkDir = installer.installJdkArchive(archiveFile, "myjdk");
 
         System.out.println("Extracted JDK to: " + jdkDir);
