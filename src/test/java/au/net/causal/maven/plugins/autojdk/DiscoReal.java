@@ -8,6 +8,7 @@ import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
 import io.foojay.api.discoclient.pkg.Pkg;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +23,8 @@ class DiscoReal
 {
     private static final Logger log = LoggerFactory.getLogger(DiscoReal.class);
 
-    //@Test
+    @Test
+    @Disabled
     void test()
     {
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
