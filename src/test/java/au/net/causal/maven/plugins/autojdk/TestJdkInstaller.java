@@ -38,21 +38,6 @@ class TestJdkInstaller
         installer = new JdkInstaller(jdksInstallationDirectory);
     }
 
-    @Test
-    @Disabled("Still uses real paths, manual run for now")
-    void test()
-    throws IOException
-    {
-        //TODO need a better way of picking a filename - this is only temporary
-        Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-windows-x64.zip");
-        //Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-linux-x64.tar.gz");
-        Path jdkDir = installer.installJdkArchive(archiveFile, "myjdk");
-
-        System.out.println("Extracted JDK to: " + jdkDir);
-
-        //TODO tests to verify output
-    }
-
     private Path generateZipArchiveWithEmptyEntries(String... entryPaths)
     throws IOException, ArchiveException
     {
@@ -89,6 +74,88 @@ class TestJdkInstaller
         }
 
         return archiveFile;
+    }
+
+    private static final int NON_TRIVIAL_MIN_FILE_SIZE = 1024;
+
+    private static void ensureFilesExistAndHaveNonTrivialLength(Path baseDir, String... fileNames)
+    {
+        for (String fileName : fileNames)
+        {
+            Path file = baseDir.resolve(fileName);
+            assertThat(file).isRegularFile();
+            try
+            {
+                assertThat(Files.size(file)).isGreaterThanOrEqualTo(NON_TRIVIAL_MIN_FILE_SIZE);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    private static void ensureExecutableFilesExistAndHaveNonTrivialLength(Path baseDir, String... fileNames)
+    {
+        for (String fileName : fileNames)
+        {
+            Path file = baseDir.resolve(fileName);
+            assertThat(file).isRegularFile();
+            assertThat(file).isExecutable();
+            try
+            {
+                assertThat(Files.size(file)).isGreaterThanOrEqualTo(NON_TRIVIAL_MIN_FILE_SIZE);
+            }
+            catch (IOException e)
+            {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    /**
+     * All these tests are manually run because they require large archives to be present in the filesystem.
+     */
+    @Nested
+    @Disabled("Still uses real paths, manual run for now")
+    class ManualExtractionTests
+    {
+        @Test
+        void windowsZipExtraction()
+        throws IOException
+        {
+            //This file needs to be prepared manually to be able to run this test
+            Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-windows-x64.zip");
+
+            Path jdkDir = installer.installJdkArchive(archiveFile, "myjdk");
+
+            assertThat(jdkDir).isNotEmptyDirectory();
+
+            //Verify that a few files have been extracted and actually exist
+            ensureExecutableFilesExistAndHaveNonTrivialLength(jdkDir,
+                  "bin/java.exe", "bin/javac.exe", "bin/javadoc.exe");
+            ensureFilesExistAndHaveNonTrivialLength(jdkDir,
+                  "jmods/java.base.jmod");
+        }
+
+        @Test
+        void linuxTarGzExtraction()
+        throws IOException
+        {
+            //This file needs to be prepared manually to be able to run this test
+            Path archiveFile = Path.of(StandardSystemProperty.USER_HOME.value(), ".m2", "repository", "au", "net", "causal", "autojdk", "jdk", "zulu", "17.0.3-7", "zulu-17.0.3-7-linux-x64.tar.gz");
+
+            Path jdkDir = installer.installJdkArchive(archiveFile, "myjdk");
+
+            assertThat(jdkDir).isNotEmptyDirectory();
+
+            //Verify that a few files have been extracted and actually exist
+            ensureExecutableFilesExistAndHaveNonTrivialLength(jdkDir,
+                  "bin/java", "bin/javac", "bin/javadoc");
+            ensureFilesExistAndHaveNonTrivialLength(jdkDir,
+                  "jmods/java.base.jmod");
+
+        }
     }
 
     @Nested
