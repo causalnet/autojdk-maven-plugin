@@ -122,6 +122,16 @@
             <version>1.2.11</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- Only for debugging purpose if we need to look at sources for toolchains plugin -->
+        <!--
+        <dependency>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-toolchains-plugin</artifactId>
+            <version>3.0.0</version>
+            <scope>test</scope>
+        </dependency>
+        -->
     </dependencies>
 
     <build>
