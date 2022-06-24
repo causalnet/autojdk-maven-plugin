@@ -50,7 +50,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
     private final String mavenArtifactGroupId;
 
-    private final JdkVersionExpander versionExpander = new JdkVersionExpander();
+    private final JdkVersionExpander versionExpander = JdkVersionExpander.EXPAND_ALL;
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                FileDownloader fileDownloader, String mavenArtifactGroupId)
@@ -132,6 +132,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
     private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange versionRange)
     {
+        //TODO
+
         FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
         String javaVersionString = artifactForPackage.getVersion(); //Version number translation happens in FoojayArtifact
         ArtifactVersion javaVersionAsArtifactVersion = new DefaultArtifactVersion(javaVersionString);

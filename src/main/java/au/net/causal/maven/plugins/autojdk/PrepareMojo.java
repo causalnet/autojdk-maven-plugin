@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import com.google.common.base.StandardSystemProperty;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -12,6 +13,7 @@ import org.apache.maven.toolchain.ToolchainManager;
 import org.apache.maven.toolchain.model.ToolchainModel;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +33,28 @@ public class PrepareMojo extends AbstractMojo
     {
         getLog().info("This is my plugin " + session.getRequest().getToolchains());
 
+        Path userHome = Path.of(StandardSystemProperty.USER_HOME.value());
+        Path m2Home = userHome.resolve(".m2");
+        Path autojdkHome = m2Home.resolve("autojdk");
+        Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
+
+        LocalJdkResolver localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, JdkVersionExpander.MAJOR_AND_FULL);
+
+        try
+        {
+            List<? extends ToolchainModel> jdkToolchains = autoJdk.generateToolchainsFromLocalJdks();
+            getLog().info(jdkToolchains.size() + " toolchains made from local JDKs");
+            Map<String, List<ToolchainModel>> toolchains = new HashMap<>();
+            toolchains.put("jdk", new ArrayList<>(jdkToolchains));
+            session.getRequest().setToolchains(toolchains);
+        }
+        catch (LocalJdkResolutionException e)
+        {
+            throw new MojoExecutionException("Failed to generate toolchains from local JDKs: " + e.getMessage(), e);
+        }
+
+        /*
         if (session.getRequest().getToolchains().isEmpty())
         {
             getLog().info("Adding custom toolchain because there are none");
@@ -38,7 +62,7 @@ public class PrepareMojo extends AbstractMojo
             //Let's see if we can inject a toolchain from a plugin
             ToolchainModel tcm = new ToolchainModel();
             tcm.setType("jdk");
-            tcm.addProvide("version", "18");
+            tcm.addProvide("version", "18.0.1");
             tcm.addProvide("vendor", "openjdk");
             Xpp3Dom conf = new Xpp3Dom("configuration");
             Xpp3Dom child = new Xpp3Dom("jdkHome");
@@ -57,7 +81,6 @@ public class PrepareMojo extends AbstractMojo
         }
         else
             System.out.println(session.getRequest().getToolchains().get("jdk").get(0).getConfiguration().getClass());
-        //TODO
-
+        */
     }
 }
