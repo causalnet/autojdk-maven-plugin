@@ -3,7 +3,6 @@ package au.net.causal.maven.plugins.autojdk;
 import com.google.common.base.StandardSystemProperty;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
-import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -39,19 +38,25 @@ public class InstallMojo extends AbstractMojo
         Path autojdkHome = m2Home.resolve("autojdk");
         Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
 
-        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
-
-        //TODO this local repo/download stuff needs to be integrated into AutoJdk.prepareJdk()
-        List<RemoteRepository> remoteRepositories = List.of(); //Don't try to resolve from remotes for now
+        List<RemoteRepository> remoteRepositories = List.of(); //Don't try to resolve from remote Maven repos for now
         VendorConfiguration vendorConfiguration = new VendorConfiguration(DiscoClientSingleton.discoClient());
         MavenArtifactJdkArchiveRepository jdkArchiveRepository = new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorConfiguration);
+
+        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
+        List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(jdkArchiveRepository);
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, JdkVersionExpander.MAJOR_AND_FULL);
 
         JdkSearchRequest jdkSearchRequest;
         try
         {
             //TODO lots of stuff still hardcoded, still mostly for testing at this stage
-            jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec("17"), platformTools.getCurrentArchitecture(), platformTools.getCurrentOperatingSystem(), "zulu");
+            jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec("[17, 18)"), platformTools.getCurrentArchitecture(), platformTools.getCurrentOperatingSystem(), "zulu");
 
+            LocalJdk localJdk = autoJdk.prepareJdk(jdkSearchRequest);
+
+            getLog().info("JDK prepared: " + localJdk.getJdkDirectory());
+
+            /*
             Collection<? extends MavenJdkArtifact> results = jdkArchiveRepository.search(jdkSearchRequest);
             if (results.isEmpty())
                 throw new MojoExecutionException("No result found for JDK search");
@@ -59,21 +64,26 @@ public class InstallMojo extends AbstractMojo
             MavenJdkArtifact jdkToInstall = results.iterator().next();
             JdkArchive jdkArchiveToInstall = jdkArchiveRepository.resolveArchive(jdkToInstall);
 
-            AutoJdkInstalledJdkSystem.LocalJdkMetadata jdkMetadata = new AutoJdkInstalledJdkSystem.LocalJdkMetadata();
+            LocalJdkMetadata jdkMetadata = new LocalJdkMetadata();
             jdkMetadata.setArchitecture(jdkToInstall.getArchitecture());
             jdkMetadata.setOperatingSystem(jdkToInstall.getOperatingSystem());
             jdkMetadata.setVendor(jdkToInstall.getVendor());
             jdkMetadata.setVersion(jdkToInstall.getVersion());
 
             localJdkResolver.installJdkFromArchive(jdkArchiveToInstall.getFile().toPath(), jdkMetadata);
+             */
+        }
+        catch (JdkNotFoundException e)
+        {
+            throw new MojoExecutionException(e.getMessage(), e);
         }
         catch (InvalidVersionSpecificationException e)
         {
             throw new MojoExecutionException("Invalid version to search for: " + e.getMessage(), e);
         }
-        catch (JdkRepositoryException e)
+        catch (LocalJdkResolutionException e)
         {
-            throw new MojoExecutionException("Failed to search JDK repository: " + e.getMessage(), e);
+            throw new MojoExecutionException("Failed to search JDK repositories: " + e.getMessage(), e);
         }
         catch (IOException e)
         {

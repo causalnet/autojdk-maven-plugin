@@ -11,7 +11,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.toolchain.ToolchainManager;
 import org.apache.maven.toolchain.model.ToolchainModel;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,8 +37,8 @@ public class PrepareMojo extends AbstractMojo
         Path autojdkHome = m2Home.resolve("autojdk");
         Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
 
-        LocalJdkResolver localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, JdkVersionExpander.MAJOR_AND_FULL);
+        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, List.of(), JdkVersionExpander.MAJOR_AND_FULL);
 
         try
         {

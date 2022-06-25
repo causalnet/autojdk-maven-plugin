@@ -67,7 +67,7 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
 
             //Only need groupId/artifactId, it searches all extensions / classifiers
             //TODO or does it???
-            Artifact searchArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactIdToSearch, null, "[0,)");
+            Artifact searchArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactIdToSearch, null, searchRequest.getVersionRange().toString());
             //Artifact searchArtifact = new DefaultArtifact("org.apache.maven", "maven-archiver", null, null);
             VersionRangeRequest versionSearchRequest = new VersionRangeRequest(searchArtifact, remoteRepositories, null);
 
