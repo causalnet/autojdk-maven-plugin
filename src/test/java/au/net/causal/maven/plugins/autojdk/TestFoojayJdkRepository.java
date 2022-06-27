@@ -5,7 +5,6 @@ import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
@@ -14,7 +13,6 @@ import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
@@ -59,15 +57,12 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID);
     }
 
-    /**
-     * Non-latest results require more extensive client-side filtering, so test that.
-     */
     @Test
-    void testNonLatest()
+    void testMajorMinorRange()
     throws Exception
     {
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                                                                        VersionRange.createFromVersionSpec("17.0.2"),
+                                                                        VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                                                                         Architecture.AMD64,
                                                                         OperatingSystem.WINDOWS,
                                                                         null));
@@ -81,15 +76,12 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
 
-    /**
-     * Latest JDKs for a given major version.
-     */
     @Test
-    void testLatest()
+    void testMajorRange()
     throws Exception
     {
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                                                                        VersionRange.createFromVersionSpec("17"),
+                                                                        VersionRange.createFromVersionSpec("[17,18)"),
                                                                         Architecture.AMD64,
                                                                         OperatingSystem.WINDOWS,
                                                                         null));
@@ -99,7 +91,27 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("17."))
+        assertThat(results).allMatch(r -> r.getVersion().startsWith("17"))
+                           .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                           .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
+    @Test
+    void testExplicitVersion()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("17.0.1"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                null));
+
+        results.forEach(r -> log.debug(r.toString()));
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().equals("17.0.1"))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -112,7 +124,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     throws Exception
     {
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                VersionRange.createFromVersionSpec("7"),
+                VersionRange.createFromVersionSpec("[7,8)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
                 null));
@@ -132,7 +144,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     throws Exception
     {
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                VersionRange.createFromVersionSpec("17.0.2"),
+                VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
                 "zulu"));
@@ -153,7 +165,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     throws Exception
     {
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                VersionRange.createFromVersionSpec("17.0.2"),
+                VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
                 "zulucore"));
@@ -192,7 +204,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         ));
 
         Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
-                                                        VersionRange.createFromVersionSpec("17.0.2"),
+                                                        VersionRange.createFromVersionSpec("[17.0.2,17.0.3)"),
                                                         Architecture.AMD64,
                                                         OperatingSystem.WINDOWS,
                                                         "zulu"));
@@ -262,7 +274,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         List<FoojayJdkRepository.VersionNumberAndLatest> result = jdkRepository.versionRangeToSearchNumbers(searchCriteria);
 
         assertThat(result).singleElement().isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("9"), Latest.AVAILABLE //Find latest available JDK 9
+                VersionNumber.fromText("9"), Latest.ALL_OF_VERSION //Find latest available JDK 9
         ));
     }
 
@@ -336,25 +348,4 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         ));
         //Might have more, but this amount of checking is enough
     }
-
-
-
-    @Nested
-    class IsArtifactMajorOnly
-    {
-        @Test
-        void onlyMajor()
-        {
-            boolean result = FoojayJdkRepository.isArtifactVersionMajorOnly(new DefaultArtifactVersion("1"));
-            assertThat(result).isTrue();
-        }
-
-        @Test
-        void notOnlyMajor()
-        {
-            boolean result = FoojayJdkRepository.isArtifactVersionMajorOnly(new DefaultArtifactVersion("1.0"));
-            assertThat(result).isFalse();
-        }
-    }
-
 }

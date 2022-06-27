@@ -1,0 +1,19 @@
+{
+  "id" : "13079728-3c43-45fc-ab30-fd333be1675f",
+  "name" : "disco_v30_major_versions",
+  "request" : {
+    "url" : "/disco/v3.0/major_versions?ea=false",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_major_versions-13079728-3c43-45fc-ab30-fd333be1675f.json",
+    "headers" : {
+      "Date" : "Mon, 27 Jun 2022 07:06:28 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "13079728-3c43-45fc-ab30-fd333be1675f",
+  "persistent" : true,
+  "insertionIndex" : 42
+}

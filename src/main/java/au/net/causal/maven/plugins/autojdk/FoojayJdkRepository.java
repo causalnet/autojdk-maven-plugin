@@ -1,6 +1,5 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.PackageType;
@@ -12,8 +11,6 @@ import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.pkg.Scope;
 import io.foojay.api.discoclient.util.PkgInfo;
 import jakarta.xml.bind.JAXB;
-import org.apache.maven.artifact.versioning.ArtifactVersion;
-import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
@@ -49,8 +46,6 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     private final FileDownloader fileDownloader;
 
     private final String mavenArtifactGroupId;
-
-    private final JdkVersionExpander versionExpander = JdkVersionExpander.EXPAND_ALL;
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                FileDownloader fileDownloader, String mavenArtifactGroupId)
@@ -130,24 +125,11 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                           .orElse(new Distribution(vendor, vendor, vendor));
     }
 
-    private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange versionRange)
+    private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange searchVersionRange)
     {
-        //TODO
-
         FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
         String javaVersionString = artifactForPackage.getVersion(); //Version number translation happens in FoojayArtifact
-        ArtifactVersion javaVersionAsArtifactVersion = new DefaultArtifactVersion(javaVersionString);
-        List<? extends ArtifactVersion> javaVersionsExpanded = versionExpander.expandVersions(javaVersionAsArtifactVersion);
-
-        for (ArtifactVersion curJavaVersion : javaVersionsExpanded)
-        {
-            boolean matched = RequirementMatcherFactory.createVersionMatcher(curJavaVersion.toString()).matches(versionRange.toString());
-            if (matched)
-                return true;
-        }
-
-        //Nothing matched
-        return false;
+        return RequirementMatcherFactory.createVersionMatcher(javaVersionString).matches(searchVersionRange.toString());
     }
 
     /**
@@ -164,11 +146,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         if (versionRange.getRecommendedVersion() != null)
         {
             //If the recommended version is just a major version, then we can do a latest=available search to only get back the latest JDKs of this major version
-            Latest latest;
-            if (isArtifactVersionMajorOnly(versionRange.getRecommendedVersion()))
-                latest = Latest.AVAILABLE; //Latest for the major version only
-            else
-                latest = Latest.ALL_OF_VERSION; //Get back all versions for the major version
+            Latest latest = Latest.ALL_OF_VERSION; //Get back all versions for the major version
+            //there are other options for only retrieving latest of the major version, but for now let's get back everything and Maven logic choose
 
             //With the foojay API if you pass more than a major version into search it is ignored for some reason...
             //So let's just use major version numbers for searching JDKs in there
@@ -176,6 +155,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
             return Collections.singletonList(new VersionNumberAndLatest(new VersionNumber(versionRange.getRecommendedVersion().getMajorVersion()), latest));
         }
 
+        //TODO if we know we are searching for latest of major version (which will be a lot of the time)
+        //   e.g. [17, 18) we could optimize to use Latest.AVAILABLE and get back less stuff, considering we will be picking the highest versions anyway
         //Version range has restrictions / exclusions
         //Use major version of the first lower bound for the first search, then search everything if that fails (but it's slow!)
         List<VersionNumber> lowerBounds = new ArrayList<>();
@@ -204,12 +185,6 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         }
 
         return searchNumberCriteria;
-    }
-
-    @VisibleForTesting
-    static boolean isArtifactVersionMajorOnly(ArtifactVersion artifactVersion)
-    {
-        return String.valueOf(artifactVersion.getMajorVersion()).equals(artifactVersion.toString());
     }
 
     @Override

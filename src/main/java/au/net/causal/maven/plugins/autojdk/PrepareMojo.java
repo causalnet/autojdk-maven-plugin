@@ -38,12 +38,16 @@ public class PrepareMojo extends AbstractMojo
         Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, List.of(), JdkVersionExpander.MAJOR_AND_FULL);
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, List.of(), StandardVersionTranslationScheme.MAJOR_AND_FULL);
 
         try
         {
             List<? extends ToolchainModel> jdkToolchains = autoJdk.generateToolchainsFromLocalJdks();
             getLog().info(jdkToolchains.size() + " toolchains made from local JDKs");
+            for (ToolchainModel jdkToolchain : jdkToolchains)
+            {
+                getLog().info("Registered JDK toolchain: " + jdkToolchain.getProvides());
+            }
             Map<String, List<ToolchainModel>> toolchains = new HashMap<>();
             toolchains.put("jdk", new ArrayList<>(jdkToolchains));
             session.getRequest().setToolchains(toolchains);

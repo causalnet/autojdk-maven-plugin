@@ -26,15 +26,15 @@ public class AutoJdk
     private final LocalJdkResolver localJdkResolver;
     private final JdkInstallationTarget jdkInstallationTarget;
     private final List<JdkArchiveRepository<?>> jdkArchiveRepositories;
-    private final JdkVersionExpander versionExpander;
+    private final VersionTranslationScheme versionTranslationScheme;
 
     public AutoJdk(LocalJdkResolver localJdkResolver, JdkInstallationTarget jdkInstallationTarget,
-                   Collection<? extends JdkArchiveRepository<?>> jdkArchiveRepositories, JdkVersionExpander versionExpander)
+                   Collection<? extends JdkArchiveRepository<?>> jdkArchiveRepositories, VersionTranslationScheme versionTranslationScheme)
     {
         this.localJdkResolver = Objects.requireNonNull(localJdkResolver);
         this.jdkInstallationTarget = Objects.requireNonNull(jdkInstallationTarget);
         this.jdkArchiveRepositories = List.copyOf(jdkArchiveRepositories);
-        this.versionExpander = Objects.requireNonNull(versionExpander);
+        this.versionTranslationScheme = Objects.requireNonNull(versionTranslationScheme);
     }
 
     public List<? extends ToolchainModel> generateToolchainsFromLocalJdks()
@@ -43,7 +43,7 @@ public class AutoJdk
         List<ToolchainModel> toolchains = new ArrayList<>();
         for (LocalJdk jdk : localJdkResolver.getInstalledJdks())
         {
-            for (ArtifactVersion jdkVersion : versionExpander.expandVersions(jdk.getVersion()))
+            for (ArtifactVersion jdkVersion : versionTranslationScheme.expandJdkVersionForRegistration(jdk.getVersion()))
             {
                 toolchains.add(localJdkToToolchainModel(jdk, jdkVersion));
             }
@@ -66,9 +66,22 @@ public class AutoJdk
         return tcm;
     }
 
+    /**
+     * Translate the search request according to the version translation scheme.
+     * This can help situations where the version criteria from the search request came from a project spec that doesn't quite follow Maven's versioning rules
+     * but worked with pure toolchains because users defined JDKs with only major version numbers
+     */
+    private JdkSearchRequest translateSearchRequestForVersionTranslationScheme(JdkSearchRequest searchRequest)
+    {
+        VersionRange translatedVersionRange = versionTranslationScheme.translateProjectRequiredJdkVersionToSearchCriteria(searchRequest.getVersionRange());
+        return new JdkSearchRequest(translatedVersionRange, searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), searchRequest.getVendor());
+    }
+
     public LocalJdk prepareJdk(JdkSearchRequest searchRequest)
     throws LocalJdkResolutionException, JdkNotFoundException, IOException
     {
+        searchRequest = translateSearchRequestForVersionTranslationScheme(searchRequest);
+
         //First scan all existing local JDKs and use one of those if there is a match
         LocalJdk localJdk = findMatchingLocalJdk(searchRequest, localJdkResolver.getInstalledJdks());
 
@@ -169,39 +182,9 @@ public class AutoJdk
     private boolean localJdkVersionMatches(ArtifactVersion jdkVersion, VersionRange searchVersion)
     {
         //This logic needs to emulate the logic of how we expand local JDKs into toolchains.xml definitions
-        for (ArtifactVersion expandedVersion : versionExpander.expandVersions(jdkVersion))
-        {
-            //The match logic of this loop must be the same as what toolchains does
-            //See DefaultToolchain.matchesRequirements()
-            //and RequirementMatcherFactory.VersionMatcher.matches()
-            boolean matches = RequirementMatcherFactory.createVersionMatcher(expandedVersion.toString()).matches(searchVersion.toString());
-            if (matches)
-                return true;
-        }
-
-        //If we get here it does not match
-        return false;
-    }
-
-    private static class JdkDownloadedFromRemote
-    {
-        private final JdkArtifact artifact;
-        private final JdkArchive downloadedArchive;
-
-        public JdkDownloadedFromRemote(JdkArtifact artifact, JdkArchive downloadedArchive)
-        {
-            this.artifact = Objects.requireNonNull(artifact);
-            this.downloadedArchive = Objects.requireNonNull(downloadedArchive);
-        }
-
-        public JdkArtifact getArtifact()
-        {
-            return artifact;
-        }
-
-        public JdkArchive getDownloadedArchive()
-        {
-            return downloadedArchive;
-        }
+        //The match logic of this loop must be the same as what toolchains does
+        //See DefaultToolchain.matchesRequirements()
+        //and RequirementMatcherFactory.VersionMatcher.matches()
+        return RequirementMatcherFactory.createVersionMatcher(jdkVersion.toString()).matches(searchVersion.toString());
     }
 }

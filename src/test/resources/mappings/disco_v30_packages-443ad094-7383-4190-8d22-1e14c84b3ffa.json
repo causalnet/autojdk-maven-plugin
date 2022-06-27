@@ -1,0 +1,19 @@
+{
+  "id" : "443ad094-7383-4190-8d22-1e14c84b3ffa",
+  "name" : "disco_v30_packages",
+  "request" : {
+    "url" : "/disco/v3.0/packages?distro=zulu&version=17&latest=all_of_version&operating_system=windows&architecture=amd64&bitness=64&package_type=jdk&discovery_scope_id=directly_downloadable&discovery_scope_id=build_of_openjdk&discovery_scope_id=free_to_use_in_production&directly_downloadable=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_packages-443ad094-7383-4190-8d22-1e14c84b3ffa.json",
+    "headers" : {
+      "Date" : "Mon, 27 Jun 2022 07:06:38 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "443ad094-7383-4190-8d22-1e14c84b3ffa",
+  "persistent" : true,
+  "insertionIndex" : 96
+}

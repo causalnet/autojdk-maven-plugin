@@ -44,13 +44,14 @@ public class InstallMojo extends AbstractMojo
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(jdkArchiveRepository);
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, JdkVersionExpander.MAJOR_AND_FULL);
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL);
 
         JdkSearchRequest jdkSearchRequest;
         try
         {
             //TODO lots of stuff still hardcoded, still mostly for testing at this stage
-            jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec("[17, 18)"), platformTools.getCurrentArchitecture(), platformTools.getCurrentOperatingSystem(), "zulu");
+            //jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec("[17, 18)"), platformTools.getCurrentArchitecture(), platformTools.getCurrentOperatingSystem(), "zulu");
+            jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec("17"), platformTools.getCurrentArchitecture(), platformTools.getCurrentOperatingSystem(), "zulu");
 
             LocalJdk localJdk = autoJdk.prepareJdk(jdkSearchRequest);
 
