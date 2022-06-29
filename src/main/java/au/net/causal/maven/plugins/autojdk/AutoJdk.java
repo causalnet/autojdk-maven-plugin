@@ -134,13 +134,22 @@ public class AutoJdk
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
         A selectedJdk = searchResults.stream()
-                                     .max(Comparator.comparing(JdkArtifact::getVersion)) //TODO more sorting if there are multiple vendors, etc.
+                                     .max(jdkComparator())
                                      .orElse(null);
         if (selectedJdk == null)
             return null;
 
         log.info("Installing JDK from " + selectedJdk);
         return repository.resolveArchive(selectedJdk);
+    }
+
+    private Comparator<JdkArtifact> jdkComparator()
+    {
+        //TODO more sorting if there are multiple vendors, etc.
+        return Comparator.comparing(JdkArtifact::getVersion)
+                         //max should prefer .tar.gz because on unix platforms this archive format has executable
+                         //permissions in it
+                         .thenComparing(JdkArtifact::getArchiveType);
     }
 
     protected LocalJdk findMatchingLocalJdk(JdkSearchRequest searchRequest, Collection<? extends LocalJdk> jdks)
