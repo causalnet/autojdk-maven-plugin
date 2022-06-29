@@ -29,7 +29,8 @@ import java.util.Collection;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -71,7 +72,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("17.0.2"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17.0.2"))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -91,7 +92,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("17"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17"))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -111,7 +112,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().equals("17.0.1"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().equals("17.0.1"))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -134,7 +135,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("7."))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("7."))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -154,7 +155,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("17.0.2"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17.0.2"))
                 .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                 .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu"))
                 .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
@@ -175,7 +176,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("17.0.2"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17.0.2"))
                 .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                 .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu")) //canonical name, not the same as input vendor
                 .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
@@ -219,7 +220,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 
         assertThat(download.getFile()).isEqualTo(theUploadedFile.toFile());
         assertThat(download.getArtifact().getVendor()).isEqualToIgnoringCase("zulu");
-        assertThat(download.getArtifact().getVersion()).startsWith("17.0.2");
+        assertThat(download.getArtifact().getVersion().toString()).startsWith("17.0.2");
 
         verify(repositorySystem, times(2)).resolveArtifact(any(), any());
         verify(fileDownloader).downloadFile(any());
@@ -261,7 +262,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         assertThat(results).isNotEmpty();
 
         //Check that all results have an appropriate java version, arch, etc.
-        assertThat(results).allMatch(r -> r.getVersion().startsWith("18"))
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("18"))
                            .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
@@ -347,5 +348,59 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionNumber.fromText("18"), Latest.ALL_OF_VERSION
         ));
         //Might have more, but this amount of checking is enough
+    }
+
+    @Test
+    void allJava11VersionsAreReallyMavenSafe()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("[11,12)"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                null));
+
+        results.forEach(r -> log.debug(r.toString()));
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("11"))
+                           .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                           .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+
+        //Check that every version is parseable and has a parseable major version number
+        //If parsing is off, everything ends up in the qualifier which messes up version ordering, major version registration of JDKs in toolchains, etc.
+        for (FoojayArtifact result : results)
+        {
+            assertThat(result.getVersion().getMajorVersion()).isEqualTo(11);
+        }
+    }
+
+    @Test
+    void allJava17VersionsAreReallyMavenSafe()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("[17,18)"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                null));
+
+        results.forEach(r -> log.debug(r.toString()));
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17"))
+                           .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                           .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+
+        //Check that every version is parseable and has a parseable major version number
+        //If parsing is off, everything ends up in the qualifier which messes up version ordering, major version registration of JDKs in toolchains, etc.
+        for (FoojayArtifact result : results)
+        {
+            assertThat(result.getVersion().getMajorVersion()).isEqualTo(17);
+        }
     }
 }

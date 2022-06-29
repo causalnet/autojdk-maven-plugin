@@ -100,7 +100,7 @@ public class AutoJdk
                     //Extract/install it locally
                     LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
                             downloadedJdk.getArtifact().getVendor(),
-                            downloadedJdk.getArtifact().getVersion(),
+                            downloadedJdk.getArtifact().getVersion().toString(),
                             downloadedJdk.getArtifact().getArchitecture(),
                             downloadedJdk.getArtifact().getOperatingSystem()
                     );
@@ -133,11 +133,13 @@ public class AutoJdk
     throws JdkRepositoryException
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
-        if (searchResults.isEmpty())
+        A selectedJdk = searchResults.stream()
+                                     .max(Comparator.comparing(JdkArtifact::getVersion)) //TODO more sorting if there are multiple vendors, etc.
+                                     .orElse(null);
+        if (selectedJdk == null)
             return null;
 
-        A selectedJdk = searchResults.iterator().next();
-
+        log.info("Installing JDK from " + selectedJdk);
         return repository.resolveArchive(selectedJdk);
     }
 

@@ -3,6 +3,8 @@ package au.net.causal.maven.plugins.autojdk;
 import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 
@@ -49,7 +51,7 @@ public class MavenJdkArtifact implements JdkArtifact
      */
     public MavenJdkArtifact(String groupId, JdkArtifact jdkDetails)
     {
-        this(groupId, jdkDetails.getVendor(), jdkDetails.getVersion(), jdkDetails.getArchitecture(),
+        this(groupId, jdkDetails.getVendor(), jdkDetails.getVersion().toString(), jdkDetails.getArchitecture(),
              jdkDetails.getOperatingSystem(), jdkDetails.getArchiveType());
     }
 
@@ -60,9 +62,9 @@ public class MavenJdkArtifact implements JdkArtifact
     }
 
     @Override
-    public String getVersion()
+    public ArtifactVersion getVersion()
     {
-        return artifact.getVersion();
+        return new DefaultArtifactVersion(artifact.getVersion());
     }
 
     @Override
@@ -94,7 +96,7 @@ public class MavenJdkArtifact implements JdkArtifact
     @Override
     public String toString()
     {
-        return getArtifact().toString();
+        return "Maven artifact:" + getArtifact().toString();
     }
 
     /**

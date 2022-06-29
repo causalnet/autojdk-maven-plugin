@@ -43,9 +43,6 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
     {
         List<String> artifactIdsToSearch;
 
-        //TODO we might have to be a bit tricky with version searching here - we need "11" to find "11.0.2", etc.
-        //  turn things like that into a range request [11, 12) just for searching versions?
-
         //Do we know the artifact ID?
         if (searchRequest.getVendor() == null)
         {
@@ -68,7 +65,6 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
             //Only need groupId/artifactId, it searches all extensions / classifiers
             //TODO or does it???
             Artifact searchArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactIdToSearch, null, searchRequest.getVersionRange().toString());
-            //Artifact searchArtifact = new DefaultArtifact("org.apache.maven", "maven-archiver", null, null);
             VersionRangeRequest versionSearchRequest = new VersionRangeRequest(searchArtifact, remoteRepositories, null);
 
             try

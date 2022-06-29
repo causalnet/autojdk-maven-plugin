@@ -1,8 +1,11 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import io.foojay.api.discoclient.pkg.Pkg;
+import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 
 import java.util.Objects;
 
@@ -22,7 +25,7 @@ public class FoojayArtifact implements JdkArtifact
     }
 
     @Override
-    public String getVersion()
+    public ArtifactVersion getVersion()
     {
         return mavenSafeVersionFromPkgVersion(foojayPkg.getJavaVersion().toString());
     }
@@ -30,9 +33,31 @@ public class FoojayArtifact implements JdkArtifact
     /**
      * Translate '+' to '-' because Maven really doesn't deal with '+' in version numbers well.
      */
-    private static String mavenSafeVersionFromPkgVersion(String pkgVersion)
+    @VisibleForTesting
+    static ArtifactVersion mavenSafeVersionFromPkgVersion(String pkgVersion)
     {
-        return pkgVersion.replace('+', '-');
+        //Maven cannot handle '+' in versions well
+        pkgVersion = pkgVersion.replace('+', '-');
+
+        String curVersion = pkgVersion;
+
+        //Keep translating the nth last '.' into '-' until it parses into a proper Maven version
+        int nthLastDotIndex = pkgVersion.length();
+        ArtifactVersion v;
+        do
+        {
+            v = new DefaultArtifactVersion(curVersion);
+            if (v.getMajorVersion() != 0) //It parsed OK
+                return v;
+
+            nthLastDotIndex = pkgVersion.lastIndexOf('.', nthLastDotIndex);
+            if (nthLastDotIndex >= 0)
+                curVersion = pkgVersion.substring(0, nthLastDotIndex) + "-" + pkgVersion.substring(nthLastDotIndex + 1);
+        }
+        while (v.getMajorVersion() == 0 && nthLastDotIndex >= 0);
+
+        //If we get here it just simply failed to parse, so give up and just use original
+        return new DefaultArtifactVersion(pkgVersion);
     }
 
     @Override
@@ -69,6 +94,6 @@ public class FoojayArtifact implements JdkArtifact
     @Override
     public String toString()
     {
-        return getFoojayPkg().toString();
+        return "Foojay repository download:" + getFoojayPkg().toString();
     }
 }

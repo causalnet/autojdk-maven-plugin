@@ -128,7 +128,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange searchVersionRange)
     {
         FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
-        String javaVersionString = artifactForPackage.getVersion(); //Version number translation happens in FoojayArtifact
+        String javaVersionString = artifactForPackage.getVersion().toString(); //Version number translation happens in FoojayArtifact
         return RequirementMatcherFactory.createVersionMatcher(javaVersionString).matches(searchVersionRange.toString());
     }
 

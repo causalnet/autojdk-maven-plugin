@@ -1,6 +1,9 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.base.StandardSystemProperty;
+import io.foojay.api.discoclient.DiscoClient;
+import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -9,9 +12,16 @@ import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.project.MavenProject;
 import org.apache.maven.toolchain.ToolchainManager;
 import org.apache.maven.toolchain.model.ToolchainModel;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.repository.RemoteRepository;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -27,21 +37,65 @@ public class PrepareMojo extends AbstractMojo
     @Component
     private ToolchainManager toolchainManager;
 
+    @Component
+    private RepositorySystem repositorySystem;
+
+    @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
+    private RepositorySystemSession repoSession;
+
+    @Parameter(defaultValue = "${project.remotePluginRepositories}", readonly = true)
+    protected List<RemoteRepository> remoteRepositories;
+
+    @Parameter(defaultValue = "${project}", readonly = true)
+    protected MavenProject project;
+
+    @Parameter(defaultValue = "${project.build.directory}/autojdk-download", required = true)
+    protected File downloadDirectory;
+
+    private boolean downloadDirectorySetUp;
+
+    @Parameter(property = "autojdk.jdk.version", defaultValue = "17", required = true)
+    private String requiredJdkVersion;
+
+    @Parameter(property = "autojdk.jdk.vendor", defaultValue = "zulu", required = true)
+    private String requiredJdkVendor;
+
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException
     {
-        getLog().info("This is my plugin " + session.getRequest().getToolchains());
-
         Path userHome = Path.of(StandardSystemProperty.USER_HOME.value());
         Path m2Home = userHome.resolve(".m2");
         Path autojdkHome = m2Home.resolve("autojdk");
         Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
 
+        PlatformTools platformTools = new PlatformTools();
+
+        DiscoClient discoClient = DiscoClientSingleton.discoClient();
+        FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
+
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, List.of(), StandardVersionTranslationScheme.MAJOR_AND_FULL);
+
+        VendorConfiguration vendorConfiguration = new VendorConfiguration(discoClient);
+        List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
+                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorConfiguration),
+                new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
+        );
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL);
+
+
+
 
         try
         {
+            //Ensure we have an available JDK to work with
+            JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(VersionRange.createFromVersionSpec(requiredJdkVersion),
+                                                                      platformTools.getCurrentArchitecture(),
+                                                                      platformTools.getCurrentOperatingSystem(),
+                                                                      requiredJdkVendor);
+            LocalJdk localJdk = autoJdk.prepareJdk(jdkSearchRequest);
+
+            getLog().info("Prepared local JDK: " + localJdk.getJdkDirectory());
+
             List<? extends ToolchainModel> jdkToolchains = autoJdk.generateToolchainsFromLocalJdks();
             getLog().info(jdkToolchains.size() + " toolchains made from local JDKs");
             for (ToolchainModel jdkToolchain : jdkToolchains)
@@ -52,38 +106,39 @@ public class PrepareMojo extends AbstractMojo
             toolchains.put("jdk", new ArrayList<>(jdkToolchains));
             session.getRequest().setToolchains(toolchains);
         }
+        catch (InvalidVersionSpecificationException e)
+        {
+            throw new MojoExecutionException("Invalid JDK version/range: " + requiredJdkVersion, e);
+        }
+        catch (JdkNotFoundException e)
+        {
+            throw new MojoExecutionException("Could not find or install JDK '" + requiredJdkVersion + "'", e);
+        }
         catch (LocalJdkResolutionException e)
         {
             throw new MojoExecutionException("Failed to generate toolchains from local JDKs: " + e.getMessage(), e);
         }
-
-        /*
-        if (session.getRequest().getToolchains().isEmpty())
+        catch (IOException e)
         {
-            getLog().info("Adding custom toolchain because there are none");
-
-            //Let's see if we can inject a toolchain from a plugin
-            ToolchainModel tcm = new ToolchainModel();
-            tcm.setType("jdk");
-            tcm.addProvide("version", "18.0.1");
-            tcm.addProvide("vendor", "openjdk");
-            Xpp3Dom conf = new Xpp3Dom("configuration");
-            Xpp3Dom child = new Xpp3Dom("jdkHome");
-
-            String java18Home = System.getenv("JAVA18_HOME");
-            if (java18Home == null)
-                java18Home = "C:\\Program Files\\OpenJDK\\jdk-18.0.1.1";
-
-            child.setValue(java18Home);
-            conf.addChild(child);
-            tcm.setConfiguration(conf);
-
-            Map<String, List<ToolchainModel>> toolchains = new HashMap<>();
-            toolchains.put("jdk", new ArrayList<>(List.of(tcm)));
-            session.getRequest().setToolchains(toolchains);
+            throw new MojoExecutionException("I/O error preparing JDK: " + e.getMessage(), e);
         }
-        else
-            System.out.println(session.getRequest().getToolchains().get("jdk").get(0).getConfiguration().getClass());
-        */
+    }
+
+    private synchronized Path tempDownloadDirectory()
+    throws IOException
+    {
+        if (!downloadDirectorySetUp)
+        {
+            //Don't use default download directory if there's no project
+            if (project == null)
+                downloadDirectory = new File(StandardSystemProperty.JAVA_IO_TMPDIR.value());
+
+            //Ensure all directories are created
+            Files.createDirectories(downloadDirectory.toPath());
+
+            downloadDirectorySetUp = true;
+        }
+
+        return downloadDirectory.toPath();
     }
 }
