@@ -5,6 +5,8 @@ import io.foojay.api.discoclient.DiscoClient;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.Plugin;
+import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -15,6 +17,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.toolchain.ToolchainManager;
 import org.apache.maven.toolchain.model.ToolchainModel;
+import org.codehaus.plexus.util.StringUtils;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
@@ -25,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -54,15 +59,26 @@ public class PrepareMojo extends AbstractMojo
 
     private boolean downloadDirectorySetUp;
 
-    @Parameter(property = "autojdk.jdk.version", defaultValue = "17", required = true)
+    @Parameter(property = "autojdk.jdk.version")
     private String requiredJdkVersion;
 
-    @Parameter(property = "autojdk.jdk.vendor", defaultValue = "zulu", required = true)
+    @Parameter(property = "autojdk.jdk.vendor")
     private String requiredJdkVendor;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException
     {
+        Map<String, String> toolchainJdkRequirements = readToolchainsJdkRequirements();
+        if (requiredJdkVersion == null)
+            requiredJdkVersion = toolchainJdkRequirements.get("version");
+        if (requiredJdkVendor == null)
+            requiredJdkVendor = toolchainJdkRequirements.get("vendor");
+
+        if (requiredJdkVersion == null)
+            throw new MojoExecutionException("No required JDK version configured.  Either configure directly on the plugin or add toolchains plugin with appropriate configuration.");
+        if (requiredJdkVendor == null)
+            requiredJdkVendor = "zulu"; //TODO find a better way to handle this, ok for now for testing
+
         Path userHome = Path.of(StandardSystemProperty.USER_HOME.value());
         Path m2Home = userHome.resolve(".m2");
         Path autojdkHome = m2Home.resolve("autojdk");
@@ -140,5 +156,42 @@ public class PrepareMojo extends AbstractMojo
         }
 
         return downloadDirectory.toPath();
+    }
+
+    private Map<String, String> readToolchainsJdkRequirements()
+    {
+        Map<String, String> requirements = new LinkedHashMap<>();
+
+        Plugin toolchainsPlugin = project.getBuild().getPluginsAsMap().get("org.apache.maven.plugins:maven-toolchains-plugin");
+
+        //Should only have one execution, but if there's more than one just combine everything
+        //If there's multiple executions with different requirements I'd consider the build broken
+        //so if we break there as well it's not a huge deal
+        for (PluginExecution toolchainsPluginExecution : toolchainsPlugin.getExecutions())
+        {
+            Object configuration = toolchainsPluginExecution.getConfiguration();
+            if (configuration instanceof Xpp3Dom)
+            {
+                Xpp3Dom xppConfig = (Xpp3Dom)configuration;
+
+                Xpp3Dom toolchainsConfig = xppConfig.getChild("toolchains");
+                if (toolchainsConfig != null)
+                {
+                    Xpp3Dom jdkConfig = toolchainsConfig.getChild("jdk");
+                    if (jdkConfig != null)
+                    {
+                        for (Xpp3Dom requirementConfig : jdkConfig.getChildren())
+                        {
+                            String requirementName = requirementConfig.getName();
+                            String requirementValue = requirementConfig.getValue();
+                            if (StringUtils.isNotEmpty(requirementName) && StringUtils.isNotEmpty(requirementValue))
+                                requirements.put(requirementName, requirementValue);
+                        }
+                    }
+                }
+            }
+        }
+
+        return requirements;
     }
 }
