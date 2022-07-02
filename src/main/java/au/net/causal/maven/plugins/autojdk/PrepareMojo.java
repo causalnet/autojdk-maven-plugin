@@ -167,25 +167,28 @@ public class PrepareMojo extends AbstractMojo
         //Should only have one execution, but if there's more than one just combine everything
         //If there's multiple executions with different requirements I'd consider the build broken
         //so if we break there as well it's not a huge deal
-        for (PluginExecution toolchainsPluginExecution : toolchainsPlugin.getExecutions())
+        if (toolchainsPlugin != null && toolchainsPlugin.getExecutions() != null)
         {
-            Object configuration = toolchainsPluginExecution.getConfiguration();
-            if (configuration instanceof Xpp3Dom)
+            for (PluginExecution toolchainsPluginExecution : toolchainsPlugin.getExecutions())
             {
-                Xpp3Dom xppConfig = (Xpp3Dom)configuration;
-
-                Xpp3Dom toolchainsConfig = xppConfig.getChild("toolchains");
-                if (toolchainsConfig != null)
+                Object configuration = toolchainsPluginExecution.getConfiguration();
+                if (configuration instanceof Xpp3Dom)
                 {
-                    Xpp3Dom jdkConfig = toolchainsConfig.getChild("jdk");
-                    if (jdkConfig != null)
+                    Xpp3Dom xppConfig = (Xpp3Dom) configuration;
+
+                    Xpp3Dom toolchainsConfig = xppConfig.getChild("toolchains");
+                    if (toolchainsConfig != null)
                     {
-                        for (Xpp3Dom requirementConfig : jdkConfig.getChildren())
+                        Xpp3Dom jdkConfig = toolchainsConfig.getChild("jdk");
+                        if (jdkConfig != null)
                         {
-                            String requirementName = requirementConfig.getName();
-                            String requirementValue = requirementConfig.getValue();
-                            if (StringUtils.isNotEmpty(requirementName) && StringUtils.isNotEmpty(requirementValue))
-                                requirements.put(requirementName, requirementValue);
+                            for (Xpp3Dom requirementConfig : jdkConfig.getChildren())
+                            {
+                                String requirementName = requirementConfig.getName();
+                                String requirementValue = requirementConfig.getValue();
+                                if (StringUtils.isNotEmpty(requirementName) && StringUtils.isNotEmpty(requirementValue))
+                                    requirements.put(requirementName, requirementValue);
+                            }
                         }
                     }
                 }
