@@ -9,9 +9,15 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
+import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
+import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -68,7 +74,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         toolchainsElement.addChild(jdkElement);
         pluginConfiguration.addChild(toolchainsElement);
 
-        execution.setConfiguration(pluginConfiguration);
+        execution.setConfiguration(xmlToConfiguration(pluginConfiguration, project));
 
         project.getBuild().addPlugin(plugin);
         project.getBuild().getPluginsAsMap().put(plugin.getKey(), plugin);
@@ -112,15 +118,64 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         readJavaVersionFromCompilerPluginConfiguration(compilerPlugin.getConfiguration(), "release", javaVersions);
 
         //Pick the highest needed Java version
-        return javaVersions.last();
+        if (javaVersions.isEmpty())
+            return null;
+        else
+            return javaVersions.last();
+    }
+
+    private Xpp3Dom configurationToXml(Object configuration)
+    {
+        if (configuration == null)
+            return null;
+        if (configuration instanceof Xpp3Dom)
+            return (Xpp3Dom)configuration;
+
+        //When run as an extension when the extension's classloader is isolated, the Xpp3Dom class from the project
+        //might have a different classloader to the extension's version of Xpp3Dom
+        String xmlString = configuration.toString();
+        try (StringReader xmlReader = new StringReader(xmlString))
+        {
+            return Xpp3DomBuilder.build(xmlReader);
+        }
+        catch (IOException | XmlPullParserException e)
+        {
+            log.warn("Failed to parse configuration XML: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private Object xmlToConfiguration(Xpp3Dom xml, MavenProject project)
+    {
+        try
+        {
+            Class<?> xpp3DomBuilderClass = Class.forName(Xpp3DomBuilder.class.getName(), true, project.getClass().getClassLoader());
+            if (Xpp3DomBuilder.class == xpp3DomBuilderClass)
+                return xml;
+
+            //Special handling for the Maven extension classloader issue with Xpp3Dom and plexus-utils
+            //Use when Xpp3Dom from plexus-utils from the project is not the same as our one
+            //So we have to use reflective workarounds
+            String xmlString = xml.toString();
+
+            Method buildMethod = xpp3DomBuilderClass.getMethod("build", Reader.class);
+
+            try (StringReader reader = new StringReader(xmlString))
+            {
+                return buildMethod.invoke(null, reader);
+            }
+        }
+        catch (ReflectiveOperationException e)
+        {
+            throw new RuntimeException(e);
+        }
     }
 
     private void readJavaVersionFromCompilerPluginConfiguration(Object configuration, String configurationKey, Collection<? super Integer> versions)
     {
-        if (!(configuration instanceof Xpp3Dom))
+        Xpp3Dom configurationDom = configurationToXml(configuration);
+        if (configurationDom == null)
             return;
-
-        Xpp3Dom configurationDom = (Xpp3Dom)configuration;
 
         Xpp3Dom element = configurationDom.getChild(configurationKey);
         if (element == null)
