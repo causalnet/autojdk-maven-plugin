@@ -26,6 +26,7 @@ import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -180,6 +181,36 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
                 .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu")) //canonical name, not the same as input vendor
                 .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
+    /**
+     * Noticed that searching for latest Java 18 can give the musl result for linuxes that don't specify this despite other glibc distributions being available so
+     * there is a priority for results that have matching libc's.
+     */
+    @Test
+    void java18LinuxRequiresMatchingOperatingSystemAndLibCType()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("[18,19)"),
+                Architecture.AMD64,
+                OperatingSystem.LINUX,
+                null));
+
+        List<FoojayArtifact> resultList = new ArrayList<>(results);
+        resultList.sort(Comparator.<FoojayArtifact, String>comparing(x -> x.getFoojayPkg().getDistributionName())
+                                  .thenComparing(x -> x.getFoojayPkg().getJavaVersion())
+        );
+
+        resultList.forEach(r -> log.debug(r.toString()));
+
+        assertThat(resultList).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(resultList).allMatch(r -> r.getVersion().toString().startsWith("18"))
+                              .allMatch(r -> r.getOperatingSystem() == OperatingSystem.LINUX)
+                              .allMatch(r -> r.getFoojayPkg().getLibCType() == OperatingSystem.LINUX.getLibCType()) //which is GLibC
+                              .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
 
     @Test

@@ -2,6 +2,7 @@ package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.collect.ImmutableList;
 import eu.hansolo.jdktools.Latest;
+import eu.hansolo.jdktools.LibCType;
 import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
@@ -92,6 +93,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
             List<FoojayArtifact> results =  searchResults.stream()
                                                          .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
+                                                         .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem().getLibCType()))
                                                          .map(FoojayArtifact::new)
                                                          .filter(artifact -> artifact.getArchiveType() != null) //Any not-understood archive type is discarded
                                                          .collect(Collectors.toList());
@@ -130,6 +132,19 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
         String javaVersionString = artifactForPackage.getVersion().toString(); //Version number translation happens in FoojayArtifact
         return RequirementMatcherFactory.createVersionMatcher(javaVersionString).matches(searchVersionRange.toString());
+    }
+
+    /**
+     * Noticed that sometimes search results contain libc's that don't match the operating system's.  a JDK using musl on Ubuntu which is glibc won't run so
+     * these results need to be filtered out.
+     */
+    private boolean pkgMatchesLibCType(Pkg pkg, LibCType requiredLibCType)
+    {
+        //If there is no libc type just assume match since we can't check
+        if (requiredLibCType == null || pkg.getLibCType() == null)
+            return true;
+
+        return pkg.getLibCType() == requiredLibCType;
     }
 
     /**
