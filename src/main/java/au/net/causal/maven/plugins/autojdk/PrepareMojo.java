@@ -91,9 +91,9 @@ public class PrepareMojo extends AbstractMojo
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
 
-        VendorConfiguration vendorConfiguration = new VendorConfiguration(discoClient);
+        VendorService vendorService = new VendorService(discoClient, AutoJdkConfiguration.defaultAutoJdkConfiguration());
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
-                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorConfiguration),
+                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorService),
                 new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
         );
         AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL);

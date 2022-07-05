@@ -16,7 +16,6 @@ import org.eclipse.aether.repository.RemoteRepository;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.List;
 
 @Mojo(name="installjdk", defaultPhase = LifecyclePhase.VALIDATE)
@@ -39,8 +38,9 @@ public class InstallMojo extends AbstractMojo
         Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
 
         List<RemoteRepository> remoteRepositories = List.of(); //Don't try to resolve from remote Maven repos for now
-        VendorConfiguration vendorConfiguration = new VendorConfiguration(DiscoClientSingleton.discoClient());
-        MavenArtifactJdkArchiveRepository jdkArchiveRepository = new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorConfiguration);
+        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), AutoJdkConfiguration.defaultAutoJdkConfiguration());
+        MavenArtifactJdkArchiveRepository jdkArchiveRepository = new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk",
+                                                                                                       vendorService);
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(jdkArchiveRepository);

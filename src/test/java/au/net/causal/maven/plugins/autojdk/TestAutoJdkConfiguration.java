@@ -8,7 +8,7 @@ import java.io.StringWriter;
 class TestAutoJdkConfiguration
 {
     @Test
-    void test()
+    void testSerialization()
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration();
         config.getVendors().add("zulu");

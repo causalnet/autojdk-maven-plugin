@@ -84,7 +84,7 @@ public class TestDownloadMojo extends AbstractMojo
     {
         return new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, List.of(),
                                                      "au.net.causal.autojdk.jdk",
-                                                     new VendorConfiguration(DiscoClientSingleton.discoClient()));
+                                                     new VendorService(DiscoClientSingleton.discoClient(), AutoJdkConfiguration.defaultAutoJdkConfiguration()));
     }
 
     private <A extends JdkArtifact> void runSearch(JdkSearchRequest searchRequest, JdkArchiveRepository<A> jdkRepo)

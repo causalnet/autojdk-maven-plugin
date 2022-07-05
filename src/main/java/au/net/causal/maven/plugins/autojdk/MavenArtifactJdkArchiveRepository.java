@@ -24,17 +24,17 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
     private final RepositorySystemSession repositorySystemSession;
     private final List<RemoteRepository> remoteRepositories;
     private final String mavenArtifactGroupId;
-    private final VendorConfiguration vendorConfiguration;
+    private final VendorService vendorService;
 
     public MavenArtifactJdkArchiveRepository(RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                              List<RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
-                                             VendorConfiguration vendorConfiguration)
+                                             VendorService vendorService)
     {
         this.repositorySystem = Objects.requireNonNull(repositorySystem);
         this.repositorySystemSession = Objects.requireNonNull(repositorySystemSession);
         this.remoteRepositories = List.copyOf(remoteRepositories);
         this.mavenArtifactGroupId = Objects.requireNonNull(mavenArtifactGroupId);
-        this.vendorConfiguration = Objects.requireNonNull(vendorConfiguration);
+        this.vendorService = Objects.requireNonNull(vendorService);
     }
 
     @Override
@@ -47,10 +47,10 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         if (searchRequest.getVendor() == null)
         {
             //If not, need to search all known vendors
-            artifactIdsToSearch = vendorConfiguration.getAllVendors()
-                                                     .stream()
-                                                     .map(MavenJdkArtifact::vendorToArtifactId)
-                                                     .collect(Collectors.toUnmodifiableList());
+            artifactIdsToSearch = vendorService.getAllVendors()
+                                               .stream()
+                                               .map(MavenJdkArtifact::vendorToArtifactId)
+                                               .collect(Collectors.toUnmodifiableList());
         }
         else
             artifactIdsToSearch = Collections.singletonList(MavenJdkArtifact.vendorToArtifactId(searchRequest.getVendor()));
