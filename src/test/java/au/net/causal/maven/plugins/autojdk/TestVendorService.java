@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -141,5 +142,22 @@ class TestVendorService
 
                            //Check that preferred vendors are at the top of the list
                            .endsWith("liberica");
+    }
+
+    /**
+     * Sanity check to make sure all the default vendors actually exist.
+     */
+    @Test
+    void ensureAllDefaultVendorsAreRealVendors()
+    {
+        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR));
+        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+
+        List<String> knownVendors = vendorService.getAllVendors();
+
+        List<String> defaultVendorsWithoutWildcard = new ArrayList<>(AutoJdkConfiguration.DEFAULT_VENDORS);
+        defaultVendorsWithoutWildcard.remove(AutoJdkConfiguration.WILDCARD_VENDOR);
+
+        assertThat(knownVendors).containsAll(defaultVendorsWithoutWildcard);
     }
 }

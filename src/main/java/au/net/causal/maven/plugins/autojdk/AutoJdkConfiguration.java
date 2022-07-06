@@ -19,11 +19,23 @@ public class AutoJdkConfiguration
      */
     public static final String WILDCARD_VENDOR = "*";
 
+    /**
+     * Default vendor preference order.  These were selected to provide maximum compatibility.
+     */
+    static final List<String> DEFAULT_VENDORS = List.of(
+            "zulu", //Zulu seems to always work and is present all the way back to JDK 6
+            "liberica", //Next ones are pretty solid too but not available on all platforms
+            "corretto",
+            "oracle_open_jdk",
+            "temurin",
+            WILDCARD_VENDOR //Still allow everything else if the above ones aren't available for a particular platform/JDK version combination
+    );
+
     private final List<String> vendors = new ArrayList<>();
 
     public static AutoJdkConfiguration defaultAutoJdkConfiguration()
     {
-        return new AutoJdkConfiguration(Collections.singletonList(WILDCARD_VENDOR));
+        return new AutoJdkConfiguration(DEFAULT_VENDORS);
     }
 
     public AutoJdkConfiguration()
