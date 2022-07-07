@@ -4,6 +4,8 @@ import io.foojay.api.discoclient.DiscoClient;
 import io.foojay.api.discoclient.util.Constants;
 import org.apache.commons.lang3.concurrent.ConcurrentException;
 import org.apache.commons.lang3.concurrent.LazyInitializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +19,7 @@ import java.util.Properties;
  */
 public final class DiscoClientSingleton
 {
+    private static final Logger log = LoggerFactory.getLogger(DiscoClientSingleton.class);
     private static final DiscoClientInitializer discoClientInitializer = new DiscoClientInitializer();
 
     /**
@@ -65,6 +68,21 @@ public final class DiscoClientSingleton
         @Override
         protected DiscoClient initialize()
         {
+            //Ensure user home directory actually exists, if it doesn't it screws up DiscoClient
+            //Normally user home directory should always exist, but sometimes during testing we point to a different directory so just check and create anyway
+            Path homeDirectory = Path.of(Constants.HOME_FOLDER);
+            if (Files.notExists(homeDirectory))
+            {
+                try
+                {
+                    Files.createDirectories(homeDirectory);
+                }
+                catch (IOException e)
+                {
+                    log.warn("Failed to create DiscoClient home directory: " + e, e);
+                }
+            }
+
             DiscoClient discoClient = new DiscoClient();
 
             workAroundDiscoClientExtraPropertiesFileGeneration();

@@ -13,6 +13,9 @@
     	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>    	
         <maven.version>3.8.6</maven.version>
         <java.version>11</java.version>
+
+        <!-- Local repository directory used for integration testing -->
+        <it.local.repo>${project.basedir}/it-local-repo</it.local.repo>
     </properties>
 
 	<developers>
@@ -186,14 +189,11 @@
                 <configuration>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
                     <settingsFile>src/it/settings.xml</settingsFile>
-                    <localRepositoryPath>${project.build.directory}/local-repo</localRepositoryPath>
+                    <localRepositoryPath>${it.local.repo}</localRepositoryPath>
                     <postBuildHookScript>verify</postBuildHookScript>
                     <pomIncludes>
                         <pomInclude>*</pomInclude>
                     </pomIncludes>
-                    <setupIncludes>
-                        <setupInclude>asetup-*/pom.xml</setupInclude>
-                    </setupIncludes>
                     <goals>
                         <goal>clean</goal>
                         <goal>verify</goal>
@@ -259,4 +259,26 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>cleanfull</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <version>3.2.0</version>
+                        <configuration>
+                            <filesets>
+                                <fileset>
+                                    <directory>${it.local.repo}</directory>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
