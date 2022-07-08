@@ -15,12 +15,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -28,6 +31,9 @@ import java.util.TreeSet;
 public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 {
     private static final Logger log = LoggerFactory.getLogger(AutoJdkInjectorExtension.class);
+
+    private static final String AUTOJDK_PLUGIN_GROUP_ID = "au.net.causal.maven.plugins";
+    private static final String AUTOJDK_PLUGIN_ARTIFACT_ID = "autojdk-maven-plugin";
 
     @Override
     public void afterProjectsRead(MavenSession session) throws MavenExecutionException
@@ -37,13 +43,18 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     }
 
     private void processProject(MavenProject project)
+    throws MavenExecutionException
     {
-        Plugin autoJdkPlugin = project.getPlugin("au.net.causal.maven.plugins:autojdk-maven-plugin");
+        Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
         Plugin toolchainsPlugin = project.getPlugin("org.apache.maven.plugins:maven-toolchains-plugin");
 
         Integer requiredJavaVersion = calculateRequiredJavaVersion(project);
         if (requiredJavaVersion == null)
             return;
+
+        //TODO handle what happens if the requiredJavaVersion is too low
+        //   e.g. version 1.4 which no repository would reasonably have
+        //   in this case might want to just pick the lowest available version or something
 
         //Inject toolchains
         if (toolchainsPlugin == null)
@@ -81,16 +92,18 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     }
 
     private void injectAutoJdkPlugin(MavenProject project)
+    throws MavenExecutionException
     {
-        log.info("AutoJDK extension injecting AutoJDK plugin");
+        String autoJdkPluginVersion = lookupAutoJdkPluginVersion();
+        log.info("AutoJDK extension injecting AutoJDK plugin " + autoJdkPluginVersion);
 
         Plugin plugin = new Plugin();
-        plugin.setGroupId("au.net.causal.maven.plugins");
-        plugin.setArtifactId("autojdk-maven-plugin");
-        plugin.setVersion("1.0-SNAPSHOT"); //TODO non-hardcode version
+        plugin.setGroupId(AUTOJDK_PLUGIN_GROUP_ID);
+        plugin.setArtifactId(AUTOJDK_PLUGIN_ARTIFACT_ID);
+        plugin.setVersion(autoJdkPluginVersion);
 
         PluginExecution execution = new PluginExecution();
-        execution.setGoals(new ArrayList<>(Collections.singletonList("prepare")));
+        execution.setGoals(new ArrayList<>(Collections.singletonList("prepare"))); //Wrapped in ArrayList so later anyone using getter can modify list
         plugin.addExecution(execution);
 
         //AutoJDK plugin needs to come before toolchains plugin so inject it at the top of the list
@@ -198,5 +211,39 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         {
             //Ignore versions that don't parse into a number
         }
+    }
+
+    /**
+     * Read plugin version from resource on classpath.  We can't use the Maven lookup mechanism (inject PluginDescriptor ${plugin})
+     * because we are an extension, but there should only be one version of the plugin on our classpath so this
+     * should work.
+     *
+     * @return the version of the AutoJDK plugin this extension exists in.
+     *
+     * @throws MavenExecutionException if an error occurs reading the plugin version.
+     */
+    private String lookupAutoJdkPluginVersion()
+    throws MavenExecutionException
+    {
+        URL autoJdkArtifactMetadataPropertiesResource =
+                AutoJdkInjectorExtension.class.getResource("/META-INF/maven/" + AUTOJDK_PLUGIN_GROUP_ID + "/" + AUTOJDK_PLUGIN_ARTIFACT_ID + "/pom.properties");
+        if (autoJdkArtifactMetadataPropertiesResource == null)
+            throw new MavenExecutionException("Could not find plugin metadata resource.", (Throwable)null);
+
+        Properties autoJdkArtifactMetadataProperties = new Properties();
+        try (InputStream autoJdkArtifactMetadataPropertiesIs = autoJdkArtifactMetadataPropertiesResource.openStream())
+        {
+            autoJdkArtifactMetadataProperties.load(autoJdkArtifactMetadataPropertiesIs);
+        }
+        catch (IOException e)
+        {
+            throw new MavenExecutionException("Error reading plugin metadata resource: " + e.getMessage(), e);
+        }
+
+        String version = autoJdkArtifactMetadataProperties.getProperty("version");
+        if (version == null)
+            throw new MavenExecutionException("No version property in plugin metadata.", (Throwable)null);
+
+        return version;
     }
 }
