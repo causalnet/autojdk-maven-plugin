@@ -68,13 +68,15 @@ abstract class AbstractDiscoTestCase
                                            .onlyRequestsMatching(anyRequestedFor(urlMatching(".*/disco/.*"))));
         }
 
-        //When getting remote distributions, just use Foojay's local resource
-        //Normally this comes from a github page
-        stubFor(get(urlMatching("/distributions.json")).willReturn(aResponse().withBody(Resources.toByteArray(DiscoClient.class.getResource(Constants.DISTRIBUTION_JSON)))));
-
         //Record from api.foojay.io which is the real server
         if (WIREMOCK_RECORD)
             stubFor(get(urlMatching("/.*")).willReturn(aResponse().proxiedFrom("https://api.foojay.io")));
+
+        //When getting remote distributions, use our own distributions resource
+        //Normally this comes from a github page https://github.com/foojayio/distributions/raw/main/distributions.json
+        //If there is a need to update this, download the file in a browser and paste content into test-distributions.json in the test resources directory
+        //Getting wiremock to properly handle multiple URL hosts with redirects (which the github one does) is just too painful
+        stubFor(get(urlMatching(".*/distributions.json")).willReturn(aResponse().withBody(Resources.toByteArray(AbstractDiscoTestCase.class.getResource("/test-distributions.json")))));
 
         //Preload distributions into distro client
         //It's static and racey and we don't want this to kick off after tests have finished in a background thread after

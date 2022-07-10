@@ -63,6 +63,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     throws JdkRepositoryException
     {
         List<VersionNumberAndLatest> foojaySearch = versionRangeToSearchNumbers(searchRequest.getVersionRange());
+        foojaySearch.sort(Comparator.comparing(VersionNumberAndLatest::getVersionNumber).reversed()); //Start with latest version and work our way down
 
         //If a vendor was specified, attempt to resolve
         List<Distribution> searchDistributions;
@@ -94,6 +95,8 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
             List<FoojayArtifact> results =  searchResults.stream()
                                                          .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
                                                          .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem().getLibCType()))
+                                                         //Exclude GraalVM builds, their versioning is wonky
+                                                         .filter(pkg -> !pkg.getDistribution().getScopes().contains(Scope.BUILD_OF_GRAALVM))
                                                          .map(FoojayArtifact::new)
                                                          .filter(artifact -> artifact.getArchiveType() != null) //Any not-understood archive type is discarded
                                                          .collect(Collectors.toList());
@@ -175,28 +178,45 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         //Version range has restrictions / exclusions
         //Use major version of the first lower bound for the first search, then search everything if that fails (but it's slow!)
         List<VersionNumber> lowerBounds = new ArrayList<>();
+        List<VersionNumber> upperBounds = new ArrayList<>();
+        boolean unboundedUpper = false;
         for (Restriction restriction : versionRange.getRestrictions())
         {
             if (restriction.getLowerBound() != null)
                 lowerBounds.add(new VersionNumber(restriction.getLowerBound().getMajorVersion()));
+            if (restriction.getUpperBound() != null)
+            {
+                //If upper bound is only the major version number and exclusive, then include the previous major version
+                if (!restriction.isUpperBoundInclusive() && VersionTools.isMajorVersionOnly(restriction.getUpperBound()))
+                    upperBounds.add(new VersionNumber(restriction.getUpperBound().getMajorVersion() - 1));
+                else
+                    upperBounds.add(new VersionNumber(restriction.getUpperBound().getMajorVersion()));
+            }
+            else
+                unboundedUpper = true;
         }
         Collections.sort(lowerBounds);
+        Collections.sort(upperBounds);
 
         List<VersionNumberAndLatest> searchNumberCriteria = new ArrayList<>();
         VersionNumber lowestBound = null;
         if (!lowerBounds.isEmpty())
-        {
             lowestBound = lowerBounds.get(0);
-            searchNumberCriteria.add(new VersionNumberAndLatest(lowestBound, Latest.ALL_OF_VERSION)); //The lowest lower bound major version found
-        }
+        VersionNumber highestBound = null;
+        if (!unboundedUpper && !upperBounds.isEmpty())
+            highestBound = upperBounds.get(upperBounds.size() - 1);
 
         //Now expand for all major versions above what we started with
         List<MajorVersion> availableMajorVersions = new ArrayList<>(discoClient.getAllMajorVersions());
         availableMajorVersions.sort(Comparator.comparing(MajorVersion::getAsInt));
         for (MajorVersion majorVersion : availableMajorVersions)
         {
-            if (lowestBound == null || lowestBound.isSmallerThan(majorVersion.getVersionNumber()))
-                searchNumberCriteria.add(new VersionNumberAndLatest(majorVersion.getVersionNumber(), Latest.ALL_OF_VERSION));
+            if (lowestBound == null || lowestBound.isSmallerOrEqualThan(majorVersion.getVersionNumber()))
+            {
+                //If upper is not unbounded, trim off everything greater than the highest upper bound
+                if (highestBound == null || highestBound.isLargerOrEqualThan(majorVersion.getVersionNumber()))
+                    searchNumberCriteria.add(new VersionNumberAndLatest(majorVersion.getVersionNumber(), Latest.ALL_OF_VERSION));
+            }
         }
 
         return searchNumberCriteria;

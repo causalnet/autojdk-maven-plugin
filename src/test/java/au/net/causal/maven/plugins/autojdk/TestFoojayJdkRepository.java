@@ -298,6 +298,31 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                            .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
 
+    /**
+     * Multiple major JDK versions covered by a single bounded range.
+     */
+    @Test
+    void testSearchWithBoundContainingMultipleMajorVersionNumbers()
+    throws Exception
+    {
+        //Java 16 or 17
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("[16, 18)"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                null));
+
+        results.forEach(r -> log.debug(r.toString()));
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        //Since Java 17 is the latest available it should just return Java 17 results and not the 16 ones
+        assertThat(results).allMatch(r -> r.getVersion().toString().startsWith("17"))
+                           .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                           .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
     @Test
     void versionRangeToSearchNumbersRecommendedMajorOnly()
     throws Exception
@@ -329,34 +354,9 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         VersionRange searchCriteria = VersionRange.createFromVersionSpec("[11,12)");
         List<FoojayJdkRepository.VersionNumberAndLatest> result = jdkRepository.versionRangeToSearchNumbers(searchCriteria);
 
-        //Will have searches for each known major version from the lowest min bound onwards
-        assertThat(result).size().isGreaterThanOrEqualTo(8); //11-18 at least, but probably more as time goes on
-
-        assertThat(result).element(0).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("11"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(1).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("12"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(2).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("13"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(3).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("14"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(4).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("15"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(5).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("16"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(6).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("17"), Latest.ALL_OF_VERSION
-        ));
-        assertThat(result).element(7).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
-                VersionNumber.fromText("18"), Latest.ALL_OF_VERSION
-        ));
-        //Might have more, but this amount of checking is enough
+        //Should only search Java 11
+        assertThat(result).singleElement().isEqualTo(
+                new FoojayJdkRepository.VersionNumberAndLatest(VersionNumber.fromText("11"), Latest.ALL_OF_VERSION));
     }
 
     @Test
@@ -367,7 +367,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         List<FoojayJdkRepository.VersionNumberAndLatest> result = jdkRepository.versionRangeToSearchNumbers(searchCriteria);
 
         //Will have searches for each known major version from the lowest min bound onwards
-        assertThat(result).size().isGreaterThanOrEqualTo(3); //16-18 at least, but probably more as time goes on
+        assertThat(result).hasSize(3); //16-18
 
         assertThat(result).element(0).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
                 VersionNumber.fromText("16"), Latest.ALL_OF_VERSION
@@ -377,6 +377,25 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
         ));
         assertThat(result).element(2).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
                 VersionNumber.fromText("18"), Latest.ALL_OF_VERSION
+        ));
+        //Might have more, but this amount of checking is enough
+    }
+
+    @Test
+    void versionRangeToSearchNumbersRangeCriteriaWithBoundCoveringMultipleMajorVersions()
+    throws Exception
+    {
+        VersionRange searchCriteria = VersionRange.createFromVersionSpec("[16,18)");
+        List<FoojayJdkRepository.VersionNumberAndLatest> result = jdkRepository.versionRangeToSearchNumbers(searchCriteria);
+
+        //Will have searches for each known major version from the lowest min bound onwards
+        assertThat(result).hasSize(2); //16-17
+
+        assertThat(result).element(0).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
+                VersionNumber.fromText("16"), Latest.ALL_OF_VERSION
+        ));
+        assertThat(result).element(1).isEqualTo(new FoojayJdkRepository.VersionNumberAndLatest(
+                VersionNumber.fromText("17"), Latest.ALL_OF_VERSION
         ));
         //Might have more, but this amount of checking is enough
     }

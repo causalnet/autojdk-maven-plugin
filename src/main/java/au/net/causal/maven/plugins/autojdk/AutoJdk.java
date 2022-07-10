@@ -134,7 +134,7 @@ public class AutoJdk
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
         A selectedJdk = searchResults.stream()
-                                     .max(jdkComparator())
+                                     .max(jdkComparator()) //Pick the latest available JDK version
                                      .orElse(null);
         if (selectedJdk == null)
             return null;

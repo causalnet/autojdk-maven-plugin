@@ -1,0 +1,19 @@
+{
+  "id" : "4b7f67a1-144b-40ce-a032-d482fca435e1",
+  "name" : "disco_v30_ids_196da9cb6aa6ad32f94e60265bfb572e",
+  "request" : {
+    "url" : "/disco/v3.0/ids/196da9cb6aa6ad32f94e60265bfb572e",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "body" : "{\n  \"result\":[\n    {\n    \"filename\":\"zulu17.32.13-ca-jdk17.0.2-win_x64.zip\",\n    \"direct_download_uri\":\"https://cdn.azul.com/zulu/bin/zulu17.32.13-ca-jdk17.0.2-win_x64.zip\",\n    \"download_site_uri\":\"\",\n    \"signature_uri\":\"\",\n    \"checksum_uri\":\"\",\n    \"checksum\":\"e965aa0ea7a0661a3446cf8f10ee00684b851f883b803315289f26b4aa907fdb\",\n    \"checksum_type\":\"sha256\"\n  }\n    ],\n  \"message\":\"\"\n}",
+    "headers" : {
+      "Date" : "Sun, 10 Jul 2022 07:59:33 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "4b7f67a1-144b-40ce-a032-d482fca435e1",
+  "persistent" : true,
+  "insertionIndex" : 375
+}
