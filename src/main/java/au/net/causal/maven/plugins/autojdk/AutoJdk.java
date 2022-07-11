@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
@@ -13,7 +14,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -27,21 +31,28 @@ public class AutoJdk
     private final JdkInstallationTarget jdkInstallationTarget;
     private final List<JdkArchiveRepository<?>> jdkArchiveRepositories;
     private final VersionTranslationScheme versionTranslationScheme;
+    private final AutoJdkConfiguration autoJdkConfiguration;
 
     public AutoJdk(LocalJdkResolver localJdkResolver, JdkInstallationTarget jdkInstallationTarget,
-                   Collection<? extends JdkArchiveRepository<?>> jdkArchiveRepositories, VersionTranslationScheme versionTranslationScheme)
+                   Collection<? extends JdkArchiveRepository<?>> jdkArchiveRepositories, VersionTranslationScheme versionTranslationScheme,
+                   AutoJdkConfiguration autoJdkConfiguration)
     {
         this.localJdkResolver = Objects.requireNonNull(localJdkResolver);
         this.jdkInstallationTarget = Objects.requireNonNull(jdkInstallationTarget);
         this.jdkArchiveRepositories = List.copyOf(jdkArchiveRepositories);
         this.versionTranslationScheme = Objects.requireNonNull(versionTranslationScheme);
+        this.autoJdkConfiguration = Objects.requireNonNull(autoJdkConfiguration);
     }
 
     public List<? extends ToolchainModel> generateToolchainsFromLocalJdks()
     throws LocalJdkResolutionException
     {
         List<ToolchainModel> toolchains = new ArrayList<>();
-        for (LocalJdk jdk : localJdkResolver.getInstalledJdks())
+
+        List<LocalJdk> localJdks = new ArrayList<>(localJdkResolver.getInstalledJdks());
+        localJdks.sort(localJdkComparator().reversed());
+
+        for (LocalJdk jdk : localJdks)
         {
             for (ArtifactVersion jdkVersion : versionTranslationScheme.expandJdkVersionForRegistration(jdk.getVersion()))
             {
@@ -74,7 +85,7 @@ public class AutoJdk
     private JdkSearchRequest translateSearchRequestForVersionTranslationScheme(JdkSearchRequest searchRequest)
     {
         VersionRange translatedVersionRange = versionTranslationScheme.translateProjectRequiredJdkVersionToSearchCriteria(searchRequest.getVersionRange());
-        return new JdkSearchRequest(translatedVersionRange, searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), searchRequest.getVendor());
+        return searchRequest.withVersionRange(translatedVersionRange);
     }
 
     public LocalJdk prepareJdk(JdkSearchRequest searchRequest)
@@ -143,13 +154,23 @@ public class AutoJdk
         return repository.resolveArchive(selectedJdk);
     }
 
-    private Comparator<JdkArtifact> jdkComparator()
+    @VisibleForTesting
+    Comparator<JdkArtifact> jdkComparator()
     {
-        //TODO more sorting if there are multiple vendors, etc.
-        return Comparator.comparing(JdkArtifact::getVersion)
+        //Sort by preferred vendor first (preferred last), then by version (highest last) then archive type (.tar.gz last)
+        return Comparator.comparing(JdkArtifact::getVendor, new KnownValueComparator<>(autoJdkConfiguration.getVendors(), AutoJdkConfiguration.WILDCARD_VENDOR).reversed())
+                         .thenComparing(JdkArtifact::getVersion)
                          //max should prefer .tar.gz because on unix platforms this archive format has executable
                          //permissions in it
                          .thenComparing(JdkArtifact::getArchiveType);
+    }
+
+    @VisibleForTesting
+    Comparator<LocalJdk> localJdkComparator()
+    {
+        //Sort by preferred vendor first (preferred last), then by version (highest last)
+        return Comparator.comparing(LocalJdk::getVendor, new KnownValueComparator<>(autoJdkConfiguration.getVendors(), AutoJdkConfiguration.WILDCARD_VENDOR).reversed())
+                         .thenComparing(LocalJdk::getVersion);
     }
 
     protected LocalJdk findMatchingLocalJdk(JdkSearchRequest searchRequest, Collection<? extends LocalJdk> jdks)

@@ -76,8 +76,6 @@ public class PrepareMojo extends AbstractMojo
 
         if (requiredJdkVersion == null)
             throw new MojoExecutionException("No required JDK version configured.  Either configure directly on the plugin or add toolchains plugin with appropriate configuration.");
-        if (requiredJdkVendor == null)
-            requiredJdkVendor = "zulu"; //TODO find a better way to handle this, ok for now for testing
 
         Path userHome = Path.of(StandardSystemProperty.USER_HOME.value());
         Path m2Home = userHome.resolve(".m2");
@@ -91,15 +89,13 @@ public class PrepareMojo extends AbstractMojo
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
 
-        VendorService vendorService = new VendorService(discoClient, AutoJdkConfiguration.defaultAutoJdkConfiguration());
+        AutoJdkConfiguration autoJdkConfiguration = AutoJdkConfiguration.defaultAutoJdkConfiguration();
+        VendorService vendorService = new VendorService(discoClient, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
                 new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorService),
                 new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
         );
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL);
-
-
-
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL, autoJdkConfiguration);
 
         try
         {

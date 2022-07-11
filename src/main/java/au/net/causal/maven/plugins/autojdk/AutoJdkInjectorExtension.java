@@ -81,6 +81,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Xpp3Dom jdkElement = new Xpp3Dom("jdk");
         Xpp3Dom versionElement = new Xpp3Dom("version");
         versionElement.setValue(String.valueOf(requiredJavaVersion)); //TODO maybe better to use a range for this one
+        //TODO need to be able to inject vendor if specified by user property
         jdkElement.addChild(versionElement);
         toolchainsElement.addChild(jdkElement);
         pluginConfiguration.addChild(toolchainsElement);

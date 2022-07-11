@@ -40,4 +40,9 @@ public class JdkSearchRequest
     {
         return vendor;
     }
+
+    public JdkSearchRequest withVersionRange(VersionRange versionRange)
+    {
+        return new JdkSearchRequest(versionRange, getArchitecture(), getOperatingSystem(), getVendor());
+    }
 }
