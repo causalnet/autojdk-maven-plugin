@@ -5,8 +5,11 @@ import org.apache.maven.MavenExecutionException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
+import org.apache.maven.plugin.MojoExecution;
+import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
+import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
@@ -38,11 +41,13 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     @Override
     public void afterProjectsRead(MavenSession session) throws MavenExecutionException
     {
+        AutoJdkExtensionProperties extensionProperties = AutoJdkExtensionProperties.fromMavenSession(session);
+
         //TODO only current project or all?
-        processProject(session.getCurrentProject());
+        processProject(session.getCurrentProject(), extensionProperties);
     }
 
-    private void processProject(MavenProject project)
+    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties)
     throws MavenExecutionException
     {
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
@@ -58,12 +63,12 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
         //Inject toolchains
         if (toolchainsPlugin == null)
-            injectToolchainsPlugin(project, requiredJavaVersion);
+            injectToolchainsPlugin(project, requiredJavaVersion, extensionProperties);
         if (autoJdkPlugin == null)
             injectAutoJdkPlugin(project);
     }
 
-    private void injectToolchainsPlugin(MavenProject project, int requiredJavaVersion)
+    private void injectToolchainsPlugin(MavenProject project, int requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
     {
         log.info("AutoJDK extension injecting toolchains plugin with required Java version '" + requiredJavaVersion + "'");
 
@@ -81,8 +86,13 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Xpp3Dom jdkElement = new Xpp3Dom("jdk");
         Xpp3Dom versionElement = new Xpp3Dom("version");
         versionElement.setValue(String.valueOf(requiredJavaVersion)); //TODO maybe better to use a range for this one
-        //TODO need to be able to inject vendor if specified by user property
         jdkElement.addChild(versionElement);
+        if (extensionProperties.getJdkVendor() != null)
+        {
+            Xpp3Dom vendorElement = new Xpp3Dom("vendor");
+            vendorElement.setValue(extensionProperties.getJdkVendor());
+            jdkElement.addChild(vendorElement);
+        }
         toolchainsElement.addChild(jdkElement);
         pluginConfiguration.addChild(toolchainsElement);
 
@@ -246,5 +256,38 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             throw new MavenExecutionException("No version property in plugin metadata.", (Throwable)null);
 
         return version;
+    }
+
+    private static class AutoJdkExtensionProperties
+    {
+        /**
+         * JDK vendor specified on command line.  -Dautojdk.jdk.vendor
+         */
+        private final String jdkVendor;
+
+        public AutoJdkExtensionProperties(String jdkVendor)
+        {
+            this.jdkVendor = jdkVendor;
+        }
+
+        public static AutoJdkExtensionProperties fromMavenSession(MavenSession session)
+        throws MavenExecutionException
+        {
+            PluginParameterExpressionEvaluator evaluator = new PluginParameterExpressionEvaluator(session, new MojoExecution(null));
+            try
+            {
+                String vendor = (String)evaluator.evaluate("${autojdk.jdk.vendor}", String.class);
+                return new AutoJdkExtensionProperties(vendor);
+            }
+            catch (ExpressionEvaluationException e)
+            {
+                throw new MavenExecutionException("Error reading properties: " + e, e);
+            }
+        }
+
+        public String getJdkVendor()
+        {
+            return jdkVendor;
+        }
     }
 }
