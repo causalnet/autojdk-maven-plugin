@@ -132,7 +132,7 @@ public class PrepareMojo extends AbstractMojo
         }
         catch (IOException e)
         {
-            throw new MojoExecutionException("I/O error preparing JDK: " + e.getMessage(), e);
+            throw new MojoExecutionException("I/O error preparing JDK: " + e, e);
         }
     }
 

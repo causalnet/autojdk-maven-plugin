@@ -70,7 +70,17 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         if (searchRequest.getVendor() == null)
             searchDistributions = null;
         else
-            searchDistributions = Collections.singletonList(resolveSearchDistributionFromVendor(searchRequest.getVendor()));
+        {
+            Distribution distribution = resolveSearchDistributionFromVendor(searchRequest.getVendor());
+
+            //If the distribution could not be found, just bail out of the search with no results
+            //Foojay API treats an unknown distribution as a wildcard and it would match everything which is not what we want
+            //when the user selects a specific vendor
+            if (distribution == null)
+                return Collections.emptyList();
+
+            searchDistributions = Collections.singletonList(distribution);
+        }
 
         for (VersionNumberAndLatest vlCriteria : foojaySearch)
         {
@@ -112,12 +122,11 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
     }
 
     /**
-     * Given a vendor, return the matching distribution or generate a new one suitable for using with the
-     * search API.
+     * Given a vendor, return the matching distribution or returns null if none was found.
      *
      * @param vendor the vendor to resolve.
      *
-     * @return a known distribution, or a generated one if the distribution could not be resolved.
+     * @return a known distribution, or null.
      */
     private Distribution resolveSearchDistributionFromVendor(String vendor)
     {
@@ -127,7 +136,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                           .stream()
                           .filter(distribution -> distribution.getFromText(vendor) != null)
                           .findFirst()
-                          .orElse(new Distribution(vendor, vendor, vendor));
+                          .orElse(null);
     }
 
     private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange searchVersionRange)
