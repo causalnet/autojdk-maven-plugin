@@ -276,7 +276,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             PluginParameterExpressionEvaluator evaluator = new PluginParameterExpressionEvaluator(session, new MojoExecution(null));
             try
             {
-                String vendor = (String)evaluator.evaluate("${autojdk.jdk.vendor}", String.class);
+                String vendor = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VENDOR + "}", String.class);
                 return new AutoJdkExtensionProperties(vendor);
             }
             catch (ExpressionEvaluationException e)

@@ -36,6 +36,10 @@ import java.util.Map;
 @Mojo(name="prepare", defaultPhase = LifecyclePhase.VALIDATE)
 public class PrepareMojo extends AbstractMojo
 {
+    static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
+
+    private static final String VERSION_TRANSLATION_SCHEME_AUTO = "auto";
+
     @Parameter(defaultValue = "${session}", readonly = true)
     private MavenSession session;
 
@@ -62,8 +66,11 @@ public class PrepareMojo extends AbstractMojo
     @Parameter(property = "autojdk.jdk.version")
     private String requiredJdkVersion;
 
-    @Parameter(property = "autojdk.jdk.vendor")
+    @Parameter(property = PROPERTY_JDK_VENDOR)
     private String requiredJdkVendor;
+
+    @Parameter(property = "autojdk.versionTranslationScheme", required = true, defaultValue = VERSION_TRANSLATION_SCHEME_AUTO)
+    private String versionTranslationScheme;
 
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException
@@ -95,7 +102,8 @@ public class PrepareMojo extends AbstractMojo
                 new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorService),
                 new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
         );
-        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, StandardVersionTranslationScheme.MAJOR_AND_FULL, autoJdkConfiguration);
+        VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
+        AutoJdk autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration);
 
         try
         {
@@ -192,5 +200,71 @@ public class PrepareMojo extends AbstractMojo
         }
 
         return requirements;
+    }
+
+    /**
+     * Determines/calculates the version translation scheme that should be used from the version translation scheme configured directly or, if set to automatic mode,
+     * detects which should be used based on the version.
+     *
+     * @return version translation scheme, never null.
+     *
+     * @throws MojoExecutionException if the configured version translation scheme is unrecognized.
+     */
+    protected VersionTranslationScheme getVersionTranslationScheme()
+    throws MojoExecutionException
+    {
+        if (VERSION_TRANSLATION_SCHEME_AUTO.equalsIgnoreCase(versionTranslationScheme))
+        {
+            VersionTranslationScheme selectedScheme = detectVersionTranslationSchemeFromRequiredJdkVersion();
+            if (selectedScheme == null)
+                selectedScheme = StandardVersionTranslationScheme.UNMODIFIED;
+
+            return selectedScheme;
+        }
+        else
+        {
+            //One of the standard schemes
+            for (StandardVersionTranslationScheme cur : StandardVersionTranslationScheme.values())
+            {
+                if (cur.name().equalsIgnoreCase(versionTranslationScheme))
+                    return cur;
+            }
+        }
+
+        //If we get here it's a value we don't recognize
+        throw new MojoExecutionException("Unknown version translation scheme: " + versionTranslationScheme);
+    }
+
+    /**
+     * When the required JDK version (possibly read from toolchains) is a simple integer value, e.g. '17' then use
+     * {@link StandardVersionTranslationScheme#MAJOR_AND_FULL} translation, otherwise use
+     * {@link StandardVersionTranslationScheme#UNMODIFIED} translation.  This will allow toolchains configurations
+     * with java version set at e.g. '17' to just work even with JDK 17.0.2.
+     *
+     * @see StandardVersionTranslationScheme
+     */
+    private VersionTranslationScheme detectVersionTranslationSchemeFromRequiredJdkVersion()
+    {
+        //If the required format is a simple integer...
+        if (isPositiveInteger(requiredJdkVersion))
+            return StandardVersionTranslationScheme.MAJOR_AND_FULL;
+        else
+            return StandardVersionTranslationScheme.UNMODIFIED;
+    }
+
+    /**
+     * @return true if {@code s} is a parseable integer with value greater than zero, false otherwise.
+     */
+    private static boolean isPositiveInteger(String s)
+    {
+        try
+        {
+            int n = Integer.parseInt(s);
+            return n > 0;
+        }
+        catch (NumberFormatException e)
+        {
+            return false;
+        }
     }
 }
