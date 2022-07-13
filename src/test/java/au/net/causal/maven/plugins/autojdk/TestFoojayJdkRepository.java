@@ -324,6 +324,20 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     }
 
     @Test
+    void testSearchWithUnknownVendor()
+    throws Exception
+    {
+        //Without special handling, doing a lower-level Discoclient search with unknown vendor will actually
+        //return results for all vendors, so there is a special case that does not perform a search when the vendor is unknown
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                                                        VersionRange.createFromVersionSpec("[17, 18)"),
+                                                        Architecture.AMD64,
+                                                        OperatingSystem.WINDOWS,
+                                                        "unknown-vendor"));
+        assertThat(results).isEmpty();
+    }
+
+    @Test
     void versionRangeToSearchNumbersRecommendedMajorOnly()
     throws Exception
     {
