@@ -85,7 +85,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Xpp3Dom toolchainsElement = new Xpp3Dom("toolchains");
         Xpp3Dom jdkElement = new Xpp3Dom("jdk");
         Xpp3Dom versionElement = new Xpp3Dom("version");
-        versionElement.setValue(String.valueOf(requiredJavaVersion)); //TODO maybe better to use a range for this one
+        versionElement.setValue(majorVersionToRange(requiredJavaVersion));
         jdkElement.addChild(versionElement);
         if (extensionProperties.getJdkVendor() != null)
         {
@@ -100,6 +100,14 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
         project.getBuild().addPlugin(plugin);
         project.getBuild().getPluginsAsMap().put(plugin.getKey(), plugin);
+    }
+
+    /**
+     * Converts a required major version into a Maven version range.  e.g. 17 -> [17, 18)
+     */
+    private String majorVersionToRange(int majorVersion)
+    {
+        return "[" + majorVersion + "," + (majorVersion + 1) + ")";
     }
 
     private void injectAutoJdkPlugin(MavenProject project)
