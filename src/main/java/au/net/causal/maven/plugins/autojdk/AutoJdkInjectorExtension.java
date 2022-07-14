@@ -43,8 +43,10 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     {
         AutoJdkExtensionProperties extensionProperties = AutoJdkExtensionProperties.fromMavenSession(session);
 
-        //TODO only current project or all?
-        processProject(session.getCurrentProject(), extensionProperties);
+        for (MavenProject project : session.getProjects())
+        {
+            processProject(project, extensionProperties);
+        }
     }
 
     private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties)
@@ -70,7 +72,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
     private void injectToolchainsPlugin(MavenProject project, int requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
     {
-        log.info("AutoJDK extension injecting toolchains plugin with required Java version '" + requiredJavaVersion + "'");
+        log.info("AutoJDK extension injecting toolchains plugin with required Java version '" + requiredJavaVersion + "' into project " + project.getArtifactId());
 
         Plugin plugin = new Plugin();
         plugin.setGroupId("org.apache.maven.plugins");
@@ -114,7 +116,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     throws MavenExecutionException
     {
         String autoJdkPluginVersion = lookupAutoJdkPluginVersion();
-        log.info("AutoJDK extension injecting AutoJDK plugin " + autoJdkPluginVersion);
+        log.info("AutoJDK extension injecting AutoJDK plugin " + autoJdkPluginVersion + " into project " + project.getArtifactId());
 
         Plugin plugin = new Plugin();
         plugin.setGroupId(AUTOJDK_PLUGIN_GROUP_ID);
@@ -139,6 +141,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         //- compiler plugin configuration
         //- well known java version properties
         //- enforcer plugin configuration
+        //TODO maybe make this extensible?
 
         Plugin compilerPlugin = project.getPlugin("org.apache.maven.plugins:maven-compiler-plugin");
         if (compilerPlugin == null)
