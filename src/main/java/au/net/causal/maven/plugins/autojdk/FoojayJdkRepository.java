@@ -91,7 +91,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                                                     searchRequest.getOperatingSystem(),
                                                     null,
                                                     searchRequest.getArchitecture(),
-                                                    searchRequest.getArchitecture().getBitness(),
+                                                    searchRequest.getArchitecture() == null ? null : searchRequest.getArchitecture().getBitness(),
                                                     null, /* archive type we want is both .zip and .tar.gz but can't specify both with this Java API */
                                                     PackageType.JDK,
                                                     null,
@@ -104,7 +104,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
             List<FoojayArtifact> results =  searchResults.stream()
                                                          .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
-                                                         .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem().getLibCType()))
+                                                         .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem() == null ? null : searchRequest.getOperatingSystem().getLibCType()))
                                                          //Exclude GraalVM builds, their versioning is wonky
                                                          .filter(pkg -> !pkg.getDistribution().getScopes().contains(Scope.BUILD_OF_GRAALVM))
                                                          .map(FoojayArtifact::new)

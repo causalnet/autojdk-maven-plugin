@@ -41,6 +41,10 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
     public Collection<? extends MavenJdkArtifact> search(JdkSearchRequest searchRequest)
     throws JdkRepositoryException
     {
+        //Cannot search without known architecture / os, so bail out if this happens
+        if (searchRequest.getOperatingSystem() == null || searchRequest.getArchitecture() == null)
+            return Collections.emptyList(); //TODO a kludge until we can figure out something better
+
         List<String> artifactIdsToSearch;
 
         //Do we know the artifact ID?

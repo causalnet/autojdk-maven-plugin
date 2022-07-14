@@ -85,13 +85,33 @@ public class AutoJdk
         return searchRequest.withVersionRange(translatedVersionRange);
     }
 
+    public Collection<? extends JdkArtifact> findArtifactsInAllRepositories(JdkSearchRequest searchRequest)
+    {
+        List<JdkArtifact> results = new ArrayList<>();
+        for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+        {
+            try
+            {
+                Collection<? extends JdkArtifact> repositoryResults = jdkArchiveRepository.search(searchRequest);
+                results.addAll(repositoryResults);
+            }
+            catch (JdkRepositoryException e)
+            {
+                log.warn("Failed to search repository for JDK: " + e.getMessage());
+                log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
+            }
+        }
+
+        return results;
+    }
+
     public LocalJdk prepareJdk(JdkSearchRequest searchRequest)
     throws LocalJdkResolutionException, JdkNotFoundException, IOException
     {
         searchRequest = translateSearchRequestForVersionTranslationScheme(searchRequest);
 
         //First scan all existing local JDKs and use one of those if there is a match
-        LocalJdk localJdk = findMatchingLocalJdk(searchRequest, localJdkResolver.getInstalledJdks());
+        LocalJdk localJdk = findMatchingLocalJdk(searchRequest);
 
         if (localJdk != null)
             return localJdk;
@@ -118,7 +138,7 @@ public class AutoJdk
                     log.info("Installed new JDK to: " + newJdkInstallDirectory);
 
                     //Rescan - should find it now
-                    localJdk = findMatchingLocalJdk(searchRequest, localJdkResolver.getInstalledJdks());
+                    localJdk = findMatchingLocalJdk(searchRequest);
 
                     if (localJdk == null)
                         throw new JdkNotFoundException("Could not find JDK locally even after it downloaded and installed");
@@ -137,7 +157,7 @@ public class AutoJdk
         throw new JdkNotFoundException("Could not find suitable JDK");
     }
 
-    private <A extends JdkArtifact> JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository<A> repository)
+    private <A extends JdkArtifact > JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository < A > repository)
     throws JdkRepositoryException
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
@@ -170,8 +190,11 @@ public class AutoJdk
                          .thenComparing(LocalJdk::getVersion);
     }
 
-    protected LocalJdk findMatchingLocalJdk(JdkSearchRequest searchRequest, Collection<? extends LocalJdk> jdks)
+    protected LocalJdk findMatchingLocalJdk(JdkSearchRequest searchRequest)
+    throws LocalJdkResolutionException
     {
+        Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks();
+
         //Find highest versioned match
         return jdks.stream()
                    .filter(jdk -> localJdkMatches(jdk, searchRequest))

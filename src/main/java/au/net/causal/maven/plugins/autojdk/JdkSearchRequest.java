@@ -16,8 +16,8 @@ public class JdkSearchRequest
     public JdkSearchRequest(VersionRange versionRange, Architecture architecture, OperatingSystem operatingSystem, String vendor)
     {
         this.versionRange = Objects.requireNonNull(versionRange);
-        this.architecture = Objects.requireNonNull(architecture);
-        this.operatingSystem = Objects.requireNonNull(operatingSystem);
+        this.architecture = architecture;
+        this.operatingSystem = operatingSystem;
         this.vendor = vendor;
     }
 
