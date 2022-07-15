@@ -122,7 +122,7 @@ public class MavenJdkArtifact implements JdkArtifact
      *          the classifier or portions of it could not be parsed.
      */
     @VisibleForTesting
-    static OperatingSystemAndArchitecture parseClassifier(String classifier)
+    static Platform parseClassifier(String classifier)
     {
         OperatingSystem operatingSystem = null;
         Architecture architecture = null;
@@ -136,36 +136,11 @@ public class MavenJdkArtifact implements JdkArtifact
                 architecture = Architecture.fromText(tokens[1]);
         }
 
-        return new OperatingSystemAndArchitecture(operatingSystem, architecture);
+        return new Platform(operatingSystem, architecture);
     }
 
     public static String vendorToArtifactId(String vendor)
     {
         return vendor;
-    }
-
-    /**
-     * JDK operating system and architecture pair.
-     */
-    public static class OperatingSystemAndArchitecture
-    {
-        private final OperatingSystem operatingSystem;
-        private final Architecture architecture;
-
-        public OperatingSystemAndArchitecture(OperatingSystem operatingSystem, Architecture architecture)
-        {
-            this.operatingSystem = operatingSystem;
-            this.architecture = architecture;
-        }
-
-        public OperatingSystem getOperatingSystem()
-        {
-            return operatingSystem;
-        }
-
-        public Architecture getArchitecture()
-        {
-            return architecture;
-        }
     }
 }
