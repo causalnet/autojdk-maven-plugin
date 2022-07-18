@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * Prints out support for different host platforms (by operating system and architecture) and latest JDK versions for the current project's configured JDK.
+ */
 @Mojo(name="platform-support")
 public class ShowPlatformSupportMojo extends AbstractAutoJdkMojo
 {
@@ -46,7 +49,7 @@ public class ShowPlatformSupportMojo extends AbstractAutoJdkMojo
             for (String vendor : sortedVendors)
             {
                 List<JdkArtifact> vendorResults = resultsForPlatformByVendor.get(vendor);
-                JdkArtifact bestVendorResult = vendorResults.stream().max(autoJdk().jdkComparator()).get(); //TODO refactor?
+                JdkArtifact bestVendorResult = vendorResults.stream().max(autoJdk().jdkComparator()).get();
                 long distinctVersions = vendorResults.stream().map(JdkArtifact::getVersion).distinct().count();
 
                 if (buf.length() > 0)

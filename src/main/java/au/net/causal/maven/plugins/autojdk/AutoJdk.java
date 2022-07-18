@@ -171,8 +171,10 @@ public class AutoJdk
         return repository.resolveArchive(selectedJdk);
     }
 
-    @VisibleForTesting
-    Comparator<JdkArtifact> jdkComparator()
+    /**
+     * @return a comparator that sorts JDKs by preferred vendor, version and archive type, preferred JDKs last.
+     */
+    public Comparator<JdkArtifact> jdkComparator()
     {
         //Sort by preferred vendor first (preferred last), then by version (highest last) then archive type (.tar.gz last)
         return Comparator.comparing(JdkArtifact::getVendor, new KnownValueComparator<>(autoJdkConfiguration.getVendors(), AutoJdkConfiguration.WILDCARD_VENDOR).reversed())
@@ -182,8 +184,10 @@ public class AutoJdk
                          .thenComparing(JdkArtifact::getArchiveType);
     }
 
-    @VisibleForTesting
-    Comparator<LocalJdk> localJdkComparator()
+    /**
+     * @return a comparator that sorts JDKs by preferred vendor and version, preferred JDKs last.
+     */
+    public Comparator<LocalJdk> localJdkComparator()
     {
         //Sort by preferred vendor first (preferred last), then by version (highest last)
         return Comparator.comparing(LocalJdk::getVendor, new KnownValueComparator<>(autoJdkConfiguration.getVendors(), AutoJdkConfiguration.WILDCARD_VENDOR).reversed())
