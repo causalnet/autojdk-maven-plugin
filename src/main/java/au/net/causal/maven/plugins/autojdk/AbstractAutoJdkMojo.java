@@ -33,6 +33,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     private static final String VERSION_TRANSLATION_SCHEME_AUTO = "auto";
 
     static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
+    static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
 
     @Component
     private RepositorySystem repositorySystem;
@@ -51,7 +52,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
     private boolean downloadDirectorySetUp;
 
-    @Parameter(property = "autojdk.jdk.version")
+    @Parameter(property = PROPERTY_JDK_VERSION)
     private String requiredJdkVersion;
 
     private VersionRange requiredJdkVersionRange;

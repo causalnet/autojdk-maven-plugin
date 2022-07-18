@@ -55,7 +55,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
         Plugin toolchainsPlugin = project.getPlugin("org.apache.maven.plugins:maven-toolchains-plugin");
 
-        Integer requiredJavaVersion = calculateRequiredJavaVersion(project);
+        String requiredJavaVersion = calculateRequiredJavaVersion(project, extensionProperties);
         if (requiredJavaVersion == null)
             return;
 
@@ -70,7 +70,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             injectAutoJdkPlugin(project);
     }
 
-    private void injectToolchainsPlugin(MavenProject project, int requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
+    private void injectToolchainsPlugin(MavenProject project, String requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
     {
         log.info("AutoJDK extension injecting toolchains plugin with required Java version '" + requiredJavaVersion + "' into project " + project.getArtifactId());
 
@@ -87,7 +87,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Xpp3Dom toolchainsElement = new Xpp3Dom("toolchains");
         Xpp3Dom jdkElement = new Xpp3Dom("jdk");
         Xpp3Dom versionElement = new Xpp3Dom("version");
-        versionElement.setValue(majorVersionToRange(requiredJavaVersion));
+        versionElement.setValue(requiredJavaVersion);
         jdkElement.addChild(versionElement);
         if (extensionProperties.getJdkVendor() != null)
         {
@@ -135,13 +135,24 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     /**
      * @return the calculated version of Java this project needs, or null if it couldn't be detected or isn't a Java project.
      */
-    private Integer calculateRequiredJavaVersion(MavenProject project)
+    private String calculateRequiredJavaVersion(MavenProject project, AutoJdkExtensionProperties extensionProperties)
     {
         //Look at:
         //- compiler plugin configuration
         //- well known java version properties
         //- enforcer plugin configuration
         //TODO maybe make this extensible?
+
+        //If explicitly specified on command line, use that
+        if (extensionProperties.getJdkVersion() != null)
+        {
+            //If this is an integer, convert to range
+            Integer majorVersion = attemptParseMajorJdkVersion(extensionProperties.getJdkVersion());
+            if (majorVersion != null)
+                return majorVersionToRange(majorVersion);
+            else
+                return extensionProperties.getJdkVersion();
+        }
 
         Plugin compilerPlugin = project.getPlugin("org.apache.maven.plugins:maven-compiler-plugin");
         if (compilerPlugin == null)
@@ -156,7 +167,10 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         if (javaVersions.isEmpty())
             return null;
         else
-            return javaVersions.last();
+        {
+            int bestMajorVersion = javaVersions.last();
+            return majorVersionToRange(bestMajorVersion);
+        }
     }
 
     private Xpp3Dom configurationToXml(Object configuration)
@@ -220,6 +234,21 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         if (StringUtils.isEmpty(version))
             return;
 
+        Integer majorVersion = attemptParseMajorJdkVersion(version);
+        if (majorVersion != null)
+            versions.add(majorVersion);
+    }
+
+    private Integer attemptParseMajorJdkVersion(String version)
+    {
+        if (version == null)
+            return null;
+
+        version = version.trim();
+
+        if (version.isEmpty())
+            return null;
+
         //Adjust 1.x -> x
         if (version.startsWith("1."))
             version = version.substring("1.".length());
@@ -227,11 +256,12 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         //Must be a number, if not don't use
         try
         {
-            versions.add(Integer.parseInt(version));
+            return Integer.parseInt(version);
         }
         catch (NumberFormatException e)
         {
             //Ignore versions that don't parse into a number
+            return null;
         }
     }
 
@@ -269,18 +299,23 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         return version;
     }
 
+    /**
+     * AutoJDK properties that may be set on the command line by the user through system properties.
+     */
     private static class AutoJdkExtensionProperties
     {
-        /**
-         * JDK vendor specified on command line.  -Dautojdk.jdk.vendor
-         */
         private final String jdkVendor;
+        private final String jdkVersion;
 
-        public AutoJdkExtensionProperties(String jdkVendor)
+        public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion)
         {
             this.jdkVendor = jdkVendor;
+            this.jdkVersion = jdkVersion;
         }
 
+        /**
+         * Reads system properties from the Maven session.
+         */
         public static AutoJdkExtensionProperties fromMavenSession(MavenSession session)
         throws MavenExecutionException
         {
@@ -288,7 +323,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             try
             {
                 String vendor = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VENDOR + "}", String.class);
-                return new AutoJdkExtensionProperties(vendor);
+                String version = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VERSION + "}", String.class);
+                return new AutoJdkExtensionProperties(vendor, version);
             }
             catch (ExpressionEvaluationException e)
             {
@@ -296,9 +332,20 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             }
         }
 
+        /**
+         * @return JDK vendor specified on command line.  -D with {@value PrepareMojo#PROPERTY_JDK_VENDOR}
+         */
         public String getJdkVendor()
         {
             return jdkVendor;
+        }
+
+        /**
+         * @return JDK version specified on command line.  -D with {@value PrepareMojo#PROPERTY_JDK_VERSION}
+         */
+        public String getJdkVersion()
+        {
+            return jdkVersion;
         }
     }
 }
