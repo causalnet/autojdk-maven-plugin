@@ -16,7 +16,7 @@ class TestVendorService
     @Test
     void allVendors()
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR));
+        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -36,7 +36,7 @@ class TestVendorService
                 "zulu",
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ));
+        ), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -60,7 +60,7 @@ class TestVendorService
                 "galah",
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ));
+        ), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -82,7 +82,7 @@ class TestVendorService
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
                 "liberica"
-        ));
+        ), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -103,7 +103,7 @@ class TestVendorService
                 "zulu",
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ));
+        ), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -128,7 +128,7 @@ class TestVendorService
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 "liberica"
-        ));
+        ), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -150,7 +150,7 @@ class TestVendorService
     @Test
     void ensureAllDefaultVendorsAreRealVendors()
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR));
+        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
         VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
 
         List<String> knownVendors = vendorService.getAllVendors();

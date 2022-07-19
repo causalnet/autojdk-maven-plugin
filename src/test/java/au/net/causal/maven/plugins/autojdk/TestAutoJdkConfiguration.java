@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
 import jakarta.xml.bind.JAXB;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -22,6 +23,8 @@ class TestAutoJdkConfiguration
         AutoJdkConfiguration config = new AutoJdkConfiguration();
         config.getVendors().add("zulu");
         config.getVendors().add("*");
+
+        config.getExtensionExclusions().add(new ExtensionExclusion("(,8)", "[8,9)"));
 
         try (StringWriter out = new StringWriter())
         {
@@ -47,4 +50,6 @@ class TestAutoJdkConfiguration
             assertThat(result.getVendors()).containsExactly("zulu", "*");
         }
     }
+
+    //TODO think about defaults when the file is present but elements are not
 }

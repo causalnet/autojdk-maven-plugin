@@ -1,7 +1,11 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
+import au.net.causal.maven.plugins.autojdk.ExtensionExclusionProcessor.ExclusionProcessorException;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
+import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -43,25 +47,65 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     {
         AutoJdkExtensionProperties extensionProperties = AutoJdkExtensionProperties.fromMavenSession(session);
 
+        AutoJdkHome autojdkHome = AutoJdkHome.defaultHome();
+        AutoJdkConfiguration autoJdkConfiguration;
+        try
+        {
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autojdkHome.getAutoJdkConfigurationFile());
+        }
+        catch (IOException e)
+        {
+            throw new MavenExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
+        }
+
+
         for (MavenProject project : session.getProjects())
         {
-            processProject(project, extensionProperties);
+            processProject(project, extensionProperties, autoJdkConfiguration);
         }
     }
 
-    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties)
+    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties, AutoJdkConfiguration autoJdkConfiguration)
     throws MavenExecutionException
     {
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
         Plugin toolchainsPlugin = project.getPlugin("org.apache.maven.plugins:maven-toolchains-plugin");
 
-        String requiredJavaVersion = calculateRequiredJavaVersion(project, extensionProperties);
+        VersionRange requiredJavaVersion = calculateRequiredJavaVersionRange(project, extensionProperties);
         if (requiredJavaVersion == null)
             return;
 
-        //TODO handle what happens if the requiredJavaVersion is too low
-        //   e.g. version 1.4 which no repository would reasonably have
-        //   in this case might want to just pick the lowest available version or something
+        //Substitution processing
+        ExtensionExclusionProcessor exclusionProcessor = new ExtensionExclusionProcessor(autoJdkConfiguration.getExtensionExclusions());
+        try
+        {
+            ExtensionExclusion matchedExclusion = exclusionProcessor.checkExclusions(requiredJavaVersion);
+            if (matchedExclusion != null)
+            {
+                if (matchedExclusion.getSubstitution() != null)
+                {
+                    log.info("AutoJDK extension substituting Java version " + matchedExclusion.getSubstitution() + " for requirement " + requiredJavaVersion + " due to exclusion configuration");
+                    try
+                    {
+                        requiredJavaVersion = VersionRange.createFromVersionSpec(matchedExclusion.getSubstitution());
+                    }
+                    catch (InvalidVersionSpecificationException e)
+                    {
+                        throw new MavenExecutionException("Invalid substitution version '" + matchedExclusion.getSubstitution() + "' in AutoJDK configuration.", e);
+                    }
+                }
+                else //No substitution, that means bail out and don't inject anything in this project
+                {
+                    log.info("AutoJDK extension ignoring required Java version " + requiredJavaVersion + " because it is configured to be excluded.");
+                    return;
+                }
+
+            }
+        }
+        catch (ExclusionProcessorException e)
+        {
+            throw new MavenExecutionException(e.getMessage(), e);
+        }
 
         //Inject toolchains
         if (toolchainsPlugin == null)
@@ -70,7 +114,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             injectAutoJdkPlugin(project);
     }
 
-    private void injectToolchainsPlugin(MavenProject project, String requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
+    private void injectToolchainsPlugin(MavenProject project, VersionRange requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
     {
         log.info("AutoJDK extension injecting toolchains plugin with required Java version '" + requiredJavaVersion + "' into project " + project.getArtifactId());
 
@@ -87,7 +131,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         Xpp3Dom toolchainsElement = new Xpp3Dom("toolchains");
         Xpp3Dom jdkElement = new Xpp3Dom("jdk");
         Xpp3Dom versionElement = new Xpp3Dom("version");
-        versionElement.setValue(requiredJavaVersion);
+        versionElement.setValue(requiredJavaVersion.toString());
         jdkElement.addChild(versionElement);
         if (extensionProperties.getJdkVendor() != null)
         {
@@ -107,9 +151,17 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     /**
      * Converts a required major version into a Maven version range.  e.g. 17 -> [17, 18)
      */
-    private String majorVersionToRange(int majorVersion)
+    private VersionRange majorVersionToRange(int majorVersion)
     {
-        return "[" + majorVersion + "," + (majorVersion + 1) + ")";
+        try
+        {
+            return VersionRange.createFromVersionSpec("[" + majorVersion + "," + (majorVersion + 1) + ")");
+        }
+        catch (InvalidVersionSpecificationException e)
+        {
+            //Should not happen since we are constructing from an integer
+            throw new RuntimeException(e);
+        }
     }
 
     private void injectAutoJdkPlugin(MavenProject project)
@@ -133,9 +185,12 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     }
 
     /**
-     * @return the calculated version of Java this project needs, or null if it couldn't be detected or isn't a Java project.
+     * @return the calculated version of Java this project needs, or null if it couldn't be detected or isn't a Java project.  This will be a version range string.
+     *
+     * @throws MavenExecutionException if an error occurs creating the version range.
      */
-    private String calculateRequiredJavaVersion(MavenProject project, AutoJdkExtensionProperties extensionProperties)
+    private VersionRange calculateRequiredJavaVersionRange(MavenProject project, AutoJdkExtensionProperties extensionProperties)
+    throws MavenExecutionException
     {
         //Look at:
         //- compiler plugin configuration
@@ -151,7 +206,16 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             if (majorVersion != null)
                 return majorVersionToRange(majorVersion);
             else
-                return extensionProperties.getJdkVersion();
+            {
+                try
+                {
+                    return VersionRange.createFromVersionSpec(extensionProperties.getJdkVersion());
+                }
+                catch (InvalidVersionSpecificationException e)
+                {
+                    throw new MavenExecutionException("Invalid version range '" + extensionProperties.getJdkVersion() + "' specified as JDK version.", e);
+                }
+            }
         }
 
         Plugin compilerPlugin = project.getPlugin("org.apache.maven.plugins:maven-compiler-plugin");
@@ -182,6 +246,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
         //When run as an extension when the extension's classloader is isolated, the Xpp3Dom class from the project
         //might have a different classloader to the extension's version of Xpp3Dom
+        //TODO these classloader hacks are hacky - and won't work with any plugin dependencies - need to find a better way than this
         String xmlString = configuration.toString();
         try (StringReader xmlReader = new StringReader(xmlString))
         {

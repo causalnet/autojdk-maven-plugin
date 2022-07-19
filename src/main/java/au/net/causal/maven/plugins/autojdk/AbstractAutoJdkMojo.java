@@ -106,17 +106,22 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
             throw new MojoExecutionException("Invalid JDK version/range: " + requiredJdkVersion, e);
         }
 
-        Path userHome = Path.of(StandardSystemProperty.USER_HOME.value());
-        Path m2Home = userHome.resolve(".m2");
-        Path autojdkHome = m2Home.resolve("autojdk");
-        Path autoJdkInstallationDirectory = autojdkHome.resolve("jdks");
+        AutoJdkHome autojdkHome = AutoJdkHome.defaultHome();
 
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
         FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
 
-        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autoJdkInstallationDirectory);
+        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory());
 
-        AutoJdkConfiguration autoJdkConfiguration = AutoJdkConfiguration.defaultAutoJdkConfiguration();
+        AutoJdkConfiguration autoJdkConfiguration;
+        try
+        {
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autojdkHome.getAutoJdkConfigurationFile());
+        }
+        catch (IOException e)
+        {
+            throw new MojoExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
+        }
         VendorService vendorService = new VendorService(discoClient, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
                 new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorService),

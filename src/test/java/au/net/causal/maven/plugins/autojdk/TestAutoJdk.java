@@ -110,7 +110,8 @@ class TestAutoJdk
                                           new AutoJdkConfiguration(List.of(
                                                   "galahjdk", //galahjdk is preferred
                                                   AutoJdkConfiguration.WILDCARD_VENDOR, //all unknowns
-                                                  "zzzcockatoojdk"))); //cockatoo jdk is preferred even less than unknowns
+                                                  "zzzcockatoojdk"), //cockatoo jdk is preferred even less than unknowns
+                                               List.of()));
 
             List<JdkArtifact> artifacts = Arrays.asList(
                     new SimpleJdkArtifact("galahjdk", "7.0.2", ArchiveType.TAR_GZ),
