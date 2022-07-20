@@ -26,14 +26,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-//TODO a lot of duplicated code, refactor shared code into abstract superclass
-
 public abstract class AbstractAutoJdkMojo extends AbstractMojo
 {
     private static final String VERSION_TRANSLATION_SCHEME_AUTO = "auto";
 
     static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
     static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
+    static final String PROPERTY_AUTOJDK_CONFIGURATION_FILE = "autojdk.config.file";
 
     @Component
     private RepositorySystem repositorySystem;
@@ -59,6 +58,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
     @Parameter(property = PROPERTY_JDK_VENDOR)
     private String requiredJdkVendor;
+
+    @Parameter(property = PROPERTY_AUTOJDK_CONFIGURATION_FILE)
+    private File autoJdkConfigurationFile;
 
     @Parameter(property = "autojdk.versionTranslationScheme", required = true, defaultValue = VERSION_TRANSLATION_SCHEME_AUTO)
     private String versionTranslationScheme;
@@ -107,6 +109,8 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         }
 
         AutoJdkHome autojdkHome = AutoJdkHome.defaultHome();
+        if (autoJdkConfigurationFile == null)
+            autoJdkConfigurationFile = autojdkHome.getAutoJdkConfigurationFile().toFile();
 
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
         FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
@@ -116,7 +120,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         AutoJdkConfiguration autoJdkConfiguration;
         try
         {
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autojdkHome.getAutoJdkConfigurationFile());
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigurationFile.toPath());
         }
         catch (IOException e)
         {

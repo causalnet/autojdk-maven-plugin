@@ -21,10 +21,13 @@ import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -56,13 +59,18 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         AutoJdkConfiguration autoJdkConfiguration;
         try
         {
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autojdkHome.getAutoJdkConfigurationFile());
+            Path autoJdkConfigFile = extensionProperties.getAutoJdkConfigFile();
+            if (autoJdkConfigFile == null)
+                autoJdkConfigFile = autojdkHome.getAutoJdkConfigurationFile();
+
+            log.debug("AutoJDK config file: " + autoJdkConfigFile.toAbsolutePath());
+
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigFile);
         }
         catch (IOException e)
         {
             throw new MavenExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }
-
 
         for (MavenProject project : session.getProjects())
         {
@@ -364,11 +372,13 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     {
         private final String jdkVendor;
         private final String jdkVersion;
+        private final Path autoJdkConfigFile;
 
-        public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion)
+        public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion, Path autoJdkConfigFile)
         {
             this.jdkVendor = jdkVendor;
             this.jdkVersion = jdkVersion;
+            this.autoJdkConfigFile = autoJdkConfigFile;
         }
 
         /**
@@ -382,7 +392,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             {
                 String vendor = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VENDOR + "}", String.class);
                 String version = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VERSION + "}", String.class);
-                return new AutoJdkExtensionProperties(vendor, version);
+                String autoJdkConfigFile = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_AUTOJDK_CONFIGURATION_FILE + "}", File.class);
+                return new AutoJdkExtensionProperties(vendor, version, autoJdkConfigFile == null ? null : Paths.get(autoJdkConfigFile));
             }
             catch (ExpressionEvaluationException e)
             {
@@ -404,6 +415,14 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         public String getJdkVersion()
         {
             return jdkVersion;
+        }
+
+        /**
+         * @return the user-specified AutoJDK configuration file.  -D with {@value PrepareMojo#PROPERTY_AUTOJDK_CONFIGURATION_FILE}
+         */
+        public Path getAutoJdkConfigFile()
+        {
+            return autoJdkConfigFile;
         }
     }
 }
