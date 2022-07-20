@@ -22,25 +22,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Properties;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-@Component(role = AbstractMavenLifecycleParticipant.class, hint = "autojdk-injector")
 public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 {
     private static final Logger log = LoggerFactory.getLogger(AutoJdkInjectorExtension.class);
 
     private static final String AUTOJDK_PLUGIN_GROUP_ID = "au.net.causal.maven.plugins";
     private static final String AUTOJDK_PLUGIN_ARTIFACT_ID = "autojdk-maven-plugin";
+
+    @Component(role = AbstractMavenLifecycleParticipant.class, hint = "autojdk-injector")
+    public static class Loader extends DependencyLoaderMavenLifecycleParticipant
+    {
+        public Loader()
+        {
+            super(new ExtensionSpec(AUTOJDK_PLUGIN_GROUP_ID, AUTOJDK_PLUGIN_ARTIFACT_ID), AutoJdkInjectorExtension.class);
+        }
+    }
 
     @Override
     public void afterProjectsRead(MavenSession session) throws MavenExecutionException
@@ -342,26 +347,14 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     private String lookupAutoJdkPluginVersion()
     throws MavenExecutionException
     {
-        URL autoJdkArtifactMetadataPropertiesResource =
-                AutoJdkInjectorExtension.class.getResource("/META-INF/maven/" + AUTOJDK_PLUGIN_GROUP_ID + "/" + AUTOJDK_PLUGIN_ARTIFACT_ID + "/pom.properties");
-        if (autoJdkArtifactMetadataPropertiesResource == null)
-            throw new MavenExecutionException("Could not find plugin metadata resource.", (Throwable)null);
-
-        Properties autoJdkArtifactMetadataProperties = new Properties();
-        try (InputStream autoJdkArtifactMetadataPropertiesIs = autoJdkArtifactMetadataPropertiesResource.openStream())
+        try
         {
-            autoJdkArtifactMetadataProperties.load(autoJdkArtifactMetadataPropertiesIs);
+            return PluginMetadataTools.lookupArtifactVersion(AUTOJDK_PLUGIN_GROUP_ID, AUTOJDK_PLUGIN_ARTIFACT_ID, AutoJdkInjectorExtension.class);
         }
-        catch (IOException e)
+        catch (PluginMetadataTools.ArtifactMetadataException e)
         {
-            throw new MavenExecutionException("Error reading plugin metadata resource: " + e.getMessage(), e);
+            throw new MavenExecutionException(e.getMessage(), e);
         }
-
-        String version = autoJdkArtifactMetadataProperties.getProperty("version");
-        if (version == null)
-            throw new MavenExecutionException("No version property in plugin metadata.", (Throwable)null);
-
-        return version;
     }
 
     /**
