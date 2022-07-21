@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration>
+    <extension-exclusions>
+        <extension-exclusion>
+            <!-- Anything under JDK 11, use JDK 11 -->
+            <!-- Default does the same but with JDK 8 -->
+            <version>(,11)</version>
+            <substitution>[11,12)</substitution>
+        </extension-exclusion>
+    </extension-exclusions>
+    <vendors>
+        <vendor>zulu</vendor>
+        <vendor>*</vendor>
+    </vendors>
+</autojdk-configuration>
