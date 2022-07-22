@@ -129,7 +129,8 @@ public abstract class DependencyLoaderMavenLifecycleParticipant extends Abstract
                                                                                          MavenSession session)
     throws MavenExecutionException
     {
-        //Need to create it
+        //Very important that if we get here we are running as ext using the core loader (plexus.core realm)
+        //and we definitely don't have our own isolated loader
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         Set<String> providedArtifacts;
         ClassRealm classRealm;
