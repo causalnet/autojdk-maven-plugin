@@ -3,6 +3,11 @@ package au.net.causal.maven.plugins.autojdk;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 
+/**
+ * Reads the JDK version from an AutoJDK property set by the user on the command line.
+ *
+ * @see AutoJdkExtensionProperties#getJdkVersion()
+ */
 public class UserPropertyJavaDetector extends JavaVersionDetector
 {
     @Override
@@ -28,6 +33,7 @@ public class UserPropertyJavaDetector extends JavaVersionDetector
             }
             catch (InvalidVersionSpecificationException e)
             {
+                //If the user set the version property to an invalid version, don't ignore it  - fail the build
                 throw new VersionDetectionException("Invalid version range '" + extensionProperties.getJdkVersion() + "' specified as JDK version.", e);
             }
         }

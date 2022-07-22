@@ -32,11 +32,19 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     private static final String AUTOJDK_PLUGIN_GROUP_ID = "au.net.causal.maven.plugins";
     private static final String AUTOJDK_PLUGIN_ARTIFACT_ID = "autojdk-maven-plugin";
 
-    List<? extends JavaVersionDetector> javaVersionDetectors = List.of(
+    /**
+     * Ordered list of version detectors that are tried in order to determine the version of the JDK to use in order to inject AutoJDK and toolchains.
+     * First one that successfully reads a version wins and no subsequent ones will be attempted.
+     */
+    private final List<? extends JavaVersionDetector> javaVersionDetectors = List.of(
             new UserPropertyJavaDetector(),
             new CompilerPluginJavaDetector()
     );
 
+    /**
+     * Plexus component that delegates to our outer class but handles the nuances/weirdness of running both in a ext/lib or extension with isolated classloader.
+     * The outer class will always be called with an isolated classloader and full dependencies loaded thanks to this loader.
+     */
     @Component(role = AbstractMavenLifecycleParticipant.class, hint = "autojdk-injector")
     public static class Loader extends DependencyLoaderMavenLifecycleParticipant
     {
@@ -179,12 +187,16 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     }
 
     /**
-     * @return the calculated version of Java this project needs, or null if it couldn't be detected or isn't a Java project.  This will be a version range string.
+     * Tried each registered Java version detector to find the JDK version to use until one succeeds.  The first one that is successful is used.
      *
-     * @throws MavenExecutionException if an error occurs creating the version range.
+     * @param project the Maven project being processed.
+     * @param extensionProperties AutoJDK extension properties that the user may have configured on the command line.
+     *
+     * @return the calculated version of Java this project needs, or null if it couldn't be detected or isn't a Java project.  This will be a version range.
+     *
+     * @throws MavenExecutionException if an error occurs creating or processing the Java version.
      */
-    private VersionRange calculateRequiredJavaVersionRange(MavenProject project,
-                                                           AutoJdkExtensionProperties extensionProperties)
+    private VersionRange calculateRequiredJavaVersionRange(MavenProject project, AutoJdkExtensionProperties extensionProperties)
     throws MavenExecutionException
     {
         //Look at:
