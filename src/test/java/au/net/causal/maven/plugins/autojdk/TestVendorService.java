@@ -9,7 +9,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
-class TestVendorService
+class TestVendorService extends AbstractDiscoTestCase
 {
     private static final Logger log = LoggerFactory.getLogger(TestVendorService.class);
 
