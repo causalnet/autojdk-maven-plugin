@@ -9,30 +9,21 @@ import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
-import org.apache.maven.plugin.MojoExecution;
-import org.apache.maven.plugin.PluginParameterExpressionEvaluator;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
-import org.codehaus.plexus.component.configurator.expression.ExpressionEvaluationException;
-import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.List;
 
 public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 {
@@ -40,6 +31,11 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
     private static final String AUTOJDK_PLUGIN_GROUP_ID = "au.net.causal.maven.plugins";
     private static final String AUTOJDK_PLUGIN_ARTIFACT_ID = "autojdk-maven-plugin";
+
+    List<? extends JavaVersionDetector> javaVersionDetectors = List.of(
+            new UserPropertyJavaDetector(),
+            new CompilerPluginJavaDetector()
+    );
 
     @Component(role = AbstractMavenLifecycleParticipant.class, hint = "autojdk-injector")
     public static class Loader extends DependencyLoaderMavenLifecycleParticipant
@@ -78,7 +74,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         }
     }
 
-    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties, AutoJdkConfiguration autoJdkConfiguration)
+    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties,
+                                AutoJdkConfiguration autoJdkConfiguration)
     throws MavenExecutionException
     {
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
@@ -161,22 +158,6 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         project.getBuild().getPluginsAsMap().put(plugin.getKey(), plugin);
     }
 
-    /**
-     * Converts a required major version into a Maven version range.  e.g. 17 -> [17, 18)
-     */
-    private VersionRange majorVersionToRange(int majorVersion)
-    {
-        try
-        {
-            return VersionRange.createFromVersionSpec("[" + majorVersion + "," + (majorVersion + 1) + ")");
-        }
-        catch (InvalidVersionSpecificationException e)
-        {
-            //Should not happen since we are constructing from an integer
-            throw new RuntimeException(e);
-        }
-    }
-
     private void injectAutoJdkPlugin(MavenProject project)
     throws MavenExecutionException
     {
@@ -202,7 +183,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
      *
      * @throws MavenExecutionException if an error occurs creating the version range.
      */
-    private VersionRange calculateRequiredJavaVersionRange(MavenProject project, AutoJdkExtensionProperties extensionProperties)
+    private VersionRange calculateRequiredJavaVersionRange(MavenProject project,
+                                                           AutoJdkExtensionProperties extensionProperties)
     throws MavenExecutionException
     {
         //Look at:
@@ -211,65 +193,22 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         //- enforcer plugin configuration
         //TODO maybe make this extensible?
 
-        //If explicitly specified on command line, use that
-        if (extensionProperties.getJdkVersion() != null)
+        ProjectContext projectContext = new ProjectContext(project, extensionProperties);
+        for (JavaVersionDetector javaVersionDetector : javaVersionDetectors)
         {
-            //If this is an integer, convert to range
-            Integer majorVersion = attemptParseMajorJdkVersion(extensionProperties.getJdkVersion());
-            if (majorVersion != null)
-                return majorVersionToRange(majorVersion);
-            else
+            try
             {
-                try
-                {
-                    return VersionRange.createFromVersionSpec(extensionProperties.getJdkVersion());
-                }
-                catch (InvalidVersionSpecificationException e)
-                {
-                    throw new MavenExecutionException("Invalid version range '" + extensionProperties.getJdkVersion() + "' specified as JDK version.", e);
-                }
+                VersionRange detectedJavaVersion = javaVersionDetector.detectJavaVersion(projectContext);
+                if (detectedJavaVersion != null)
+                    return detectedJavaVersion;
+            }
+            catch (JavaVersionDetector.VersionDetectionException e)
+            {
+                throw new MavenExecutionException(e.getMessage(), e);
             }
         }
 
-        Plugin compilerPlugin = project.getPlugin("org.apache.maven.plugins:maven-compiler-plugin");
-        if (compilerPlugin == null)
-            return null;
-
-        SortedSet<Integer> javaVersions = new TreeSet<>();
-        readJavaVersionFromCompilerPluginConfiguration(compilerPlugin.getConfiguration(), "source", javaVersions);
-        readJavaVersionFromCompilerPluginConfiguration(compilerPlugin.getConfiguration(), "target", javaVersions);
-        readJavaVersionFromCompilerPluginConfiguration(compilerPlugin.getConfiguration(), "release", javaVersions);
-
-        //Pick the highest needed Java version
-        if (javaVersions.isEmpty())
-            return null;
-        else
-        {
-            int bestMajorVersion = javaVersions.last();
-            return majorVersionToRange(bestMajorVersion);
-        }
-    }
-
-    private Xpp3Dom configurationToXml(Object configuration)
-    {
-        if (configuration == null)
-            return null;
-        if (configuration instanceof Xpp3Dom)
-            return (Xpp3Dom)configuration;
-
-        //When run as an extension when the extension's classloader is isolated, the Xpp3Dom class from the project
-        //might have a different classloader to the extension's version of Xpp3Dom
-        //TODO these classloader hacks are hacky - and won't work with any plugin dependencies - need to find a better way than this
-        String xmlString = configuration.toString();
-        try (StringReader xmlReader = new StringReader(xmlString))
-        {
-            return Xpp3DomBuilder.build(xmlReader);
-        }
-        catch (IOException | XmlPullParserException e)
-        {
-            log.warn("Failed to parse configuration XML: " + e.getMessage(), e);
-            return null;
-        }
+        return null;
     }
 
     private Object xmlToConfiguration(Xpp3Dom xml, MavenProject project)
@@ -298,51 +237,6 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         }
     }
 
-    private void readJavaVersionFromCompilerPluginConfiguration(Object configuration, String configurationKey, Collection<? super Integer> versions)
-    {
-        Xpp3Dom configurationDom = configurationToXml(configuration);
-        if (configurationDom == null)
-            return;
-
-        Xpp3Dom element = configurationDom.getChild(configurationKey);
-        if (element == null)
-            return;
-
-        String version = element.getValue().trim();
-        if (StringUtils.isEmpty(version))
-            return;
-
-        Integer majorVersion = attemptParseMajorJdkVersion(version);
-        if (majorVersion != null)
-            versions.add(majorVersion);
-    }
-
-    private Integer attemptParseMajorJdkVersion(String version)
-    {
-        if (version == null)
-            return null;
-
-        version = version.trim();
-
-        if (version.isEmpty())
-            return null;
-
-        //Adjust 1.x -> x
-        if (version.startsWith("1."))
-            version = version.substring("1.".length());
-
-        //Must be a number, if not don't use
-        try
-        {
-            return Integer.parseInt(version);
-        }
-        catch (NumberFormatException e)
-        {
-            //Ignore versions that don't parse into a number
-            return null;
-        }
-    }
-
     /**
      * Read plugin version from resource on classpath.  We can't use the Maven lookup mechanism (inject PluginDescriptor ${plugin})
      * because we are an extension, but there should only be one version of the plugin on our classpath so this
@@ -362,67 +256,6 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         catch (PluginMetadataTools.ArtifactMetadataException e)
         {
             throw new MavenExecutionException(e.getMessage(), e);
-        }
-    }
-
-    /**
-     * AutoJDK properties that may be set on the command line by the user through system properties.
-     */
-    private static class AutoJdkExtensionProperties
-    {
-        private final String jdkVendor;
-        private final String jdkVersion;
-        private final Path autoJdkConfigFile;
-
-        public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion, Path autoJdkConfigFile)
-        {
-            this.jdkVendor = jdkVendor;
-            this.jdkVersion = jdkVersion;
-            this.autoJdkConfigFile = autoJdkConfigFile;
-        }
-
-        /**
-         * Reads system properties from the Maven session.
-         */
-        public static AutoJdkExtensionProperties fromMavenSession(MavenSession session)
-        throws MavenExecutionException
-        {
-            PluginParameterExpressionEvaluator evaluator = new PluginParameterExpressionEvaluator(session, new MojoExecution(null));
-            try
-            {
-                String vendor = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VENDOR + "}", String.class);
-                String version = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VERSION + "}", String.class);
-                String autoJdkConfigFile = (String)evaluator.evaluate("${" + PrepareMojo.PROPERTY_AUTOJDK_CONFIGURATION_FILE + "}", File.class);
-                return new AutoJdkExtensionProperties(vendor, version, autoJdkConfigFile == null ? null : Paths.get(autoJdkConfigFile));
-            }
-            catch (ExpressionEvaluationException e)
-            {
-                throw new MavenExecutionException("Error reading properties: " + e, e);
-            }
-        }
-
-        /**
-         * @return JDK vendor specified on command line.  -D with {@value PrepareMojo#PROPERTY_JDK_VENDOR}
-         */
-        public String getJdkVendor()
-        {
-            return jdkVendor;
-        }
-
-        /**
-         * @return JDK version specified on command line.  -D with {@value PrepareMojo#PROPERTY_JDK_VERSION}
-         */
-        public String getJdkVersion()
-        {
-            return jdkVersion;
-        }
-
-        /**
-         * @return the user-specified AutoJDK configuration file.  -D with {@value PrepareMojo#PROPERTY_AUTOJDK_CONFIGURATION_FILE}
-         */
-        public Path getAutoJdkConfigFile()
-        {
-            return autoJdkConfigFile;
         }
     }
 }

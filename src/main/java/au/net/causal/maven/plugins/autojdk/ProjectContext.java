@@ -17,15 +17,22 @@ public class ProjectContext
     private static final Logger log = LoggerFactory.getLogger(ProjectContext.class);
 
     private final MavenProject project;
+    private final AutoJdkExtensionProperties autoJdkExtensionProperties;
 
-    public ProjectContext(MavenProject project)
+    public ProjectContext(MavenProject project, AutoJdkExtensionProperties autoJdkExtensionProperties)
     {
         this.project = Objects.requireNonNull(project);
+        this.autoJdkExtensionProperties = Objects.requireNonNull(autoJdkExtensionProperties);
     }
 
     public MavenProject getProject()
     {
         return project;
+    }
+
+    public AutoJdkExtensionProperties getAutoJdkExtensionProperties()
+    {
+        return autoJdkExtensionProperties;
     }
 
     public Xpp3Dom readPluginConfiguration(String pluginGroupId, String pluginArtifactId)

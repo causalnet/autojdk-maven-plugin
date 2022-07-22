@@ -5,7 +5,8 @@ import org.apache.maven.artifact.versioning.VersionRange;
 
 public abstract class JavaVersionDetector
 {
-    public abstract VersionRange detectJavaVersion(ProjectContext project);
+    public abstract VersionRange detectJavaVersion(ProjectContext project)
+    throws VersionDetectionException;
 
     public static VersionRange majorVersionToRange(int majorVersion)
     {
@@ -43,6 +44,24 @@ public abstract class JavaVersionDetector
         {
             //Ignore versions that don't parse into a number
             return null;
+        }
+    }
+
+    public static class VersionDetectionException extends Exception
+    {
+        public VersionDetectionException() {
+        }
+
+        public VersionDetectionException(String message) {
+            super(message);
+        }
+
+        public VersionDetectionException(String message, Throwable cause) {
+            super(message, cause);
+        }
+
+        public VersionDetectionException(Throwable cause) {
+            super(cause);
         }
     }
 }

@@ -12,6 +12,7 @@ public class CompilerPluginJavaDetector extends JavaVersionDetector
 {
     @Override
     public VersionRange detectJavaVersion(ProjectContext project)
+    throws VersionDetectionException
     {
         Xpp3Dom compilerConfig = project.readPluginConfiguration("org.apache.maven.plugins", "maven-compiler-plugin");
         if (compilerConfig == null)
@@ -46,6 +47,4 @@ public class CompilerPluginJavaDetector extends JavaVersionDetector
         if (majorVersion != null)
             versions.add(majorVersion);
     }
-
-
 }
