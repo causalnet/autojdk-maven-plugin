@@ -17,9 +17,6 @@ import java.util.Map;
 @Mojo(name="prepare", defaultPhase = LifecyclePhase.VALIDATE)
 public class PrepareMojo extends AbstractAutoJdkMojo
 {
-    @Parameter(defaultValue = "${session}", readonly = true)
-    private MavenSession session;
-
     @Override
     protected void executeImpl() throws MojoExecutionException, MojoFailureException
     {

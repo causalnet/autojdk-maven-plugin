@@ -9,15 +9,20 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
-class TestVendorService extends AbstractDiscoTestCase
+class TestUserConfiguredVendorService
 {
-    private static final Logger log = LoggerFactory.getLogger(TestVendorService.class);
+    private static final Logger log = LoggerFactory.getLogger(TestUserConfiguredVendorService.class);
+
+    /**
+     * Vendor service that retrieves all known vendors.  The user configured vendor service wrapper performs ordering and filtering which is what we are testing.
+     */
+    private final VendorService sourceVendorService = new OfflineFoojayVendorService();
 
     @Test
     void allVendors()
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -37,7 +42,7 @@ class TestVendorService extends AbstractDiscoTestCase
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
         ), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -61,7 +66,7 @@ class TestVendorService extends AbstractDiscoTestCase
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
         ), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -83,7 +88,7 @@ class TestVendorService extends AbstractDiscoTestCase
                 "zulu",
                 "liberica"
         ), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -104,7 +109,7 @@ class TestVendorService extends AbstractDiscoTestCase
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 AutoJdkConfiguration.WILDCARD_VENDOR
         ), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -129,7 +134,7 @@ class TestVendorService extends AbstractDiscoTestCase
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 "liberica"
         ), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
 
@@ -151,7 +156,7 @@ class TestVendorService extends AbstractDiscoTestCase
     void ensureAllDefaultVendorsAreRealVendors()
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
-        VendorService vendorService = new VendorService(DiscoClientSingleton.discoClient(), config);
+        VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> knownVendors = vendorService.getAllVendors();
 

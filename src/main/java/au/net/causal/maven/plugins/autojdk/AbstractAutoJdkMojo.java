@@ -4,6 +4,7 @@ import com.google.common.base.StandardSystemProperty;
 import io.foojay.api.discoclient.DiscoClient;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.AbstractMojo;
@@ -45,6 +46,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
     @Parameter(defaultValue = "${project}", readonly = true)
     protected MavenProject project;
+
+    @Parameter(defaultValue = "${session}", readonly = true)
+    protected MavenSession session;
 
     @Parameter(defaultValue = "${project.build.directory}/autojdk-download", required = true)
     protected File downloadDirectory;
@@ -112,7 +116,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         if (autoJdkConfigurationFile == null)
             autoJdkConfigurationFile = autojdkHome.getAutoJdkConfigurationFile().toFile();
 
-        DiscoClient discoClient = DiscoClientSingleton.discoClient();
+        boolean offlineMode = session.isOffline();
+
+        DiscoClient discoClient = DiscoClientSingleton.discoClient(); //TODO offline mode for discoclient might be a bit tricky?  Don't create this at all if not needed
         FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory());
@@ -126,9 +132,17 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         {
             throw new MojoExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }
-        VendorService vendorService = new VendorService(discoClient, autoJdkConfiguration);
+
+        VendorService allVendorService;
+        if (offlineMode)
+            allVendorService = new OfflineFoojayVendorService();
+        else
+            allVendorService = new DiscoClientVendorService(discoClient);
+
+        VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
+        //TODO handle offline mode in these live repositories
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
-                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", vendorService),
+                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService),
                 new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
         );
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
