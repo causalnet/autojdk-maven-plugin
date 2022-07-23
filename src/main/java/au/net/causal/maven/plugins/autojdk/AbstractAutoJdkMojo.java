@@ -1,7 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.base.StandardSystemProperty;
-import io.foojay.api.discoclient.DiscoClient;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
@@ -23,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +118,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         boolean offlineMode = session.isOffline();
 
-        DiscoClient discoClient = DiscoClientSingleton.discoClient(); //TODO offline mode for discoclient might be a bit tricky?  Don't create this at all if not needed
         FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory());
@@ -137,14 +136,14 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         if (offlineMode)
             allVendorService = new OfflineFoojayVendorService();
         else
-            allVendorService = new DiscoClientVendorService(discoClient);
+            allVendorService = new DiscoClientVendorService(DiscoClientSingleton.discoClient());
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
-        //TODO handle offline mode in these live repositories
-        List<JdkArchiveRepository<?>> jdkArchiveRepositories = List.of(
-                new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService),
-                new FoojayJdkRepository(discoClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk")
-        );
+        List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
+        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService));
+        if (!offlineMode)
+            jdkArchiveRepositories.add(new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk"));
+
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
         autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration);
 
