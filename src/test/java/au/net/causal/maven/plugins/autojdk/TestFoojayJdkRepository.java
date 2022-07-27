@@ -189,6 +189,29 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
     }
 
+    @Test
+    void searchWithEaReleaseType()
+    throws Exception
+    {
+        Collection<? extends FoojayArtifact> results = jdkRepository.search(new JdkSearchRequest(
+                VersionRange.createFromVersionSpec("[18, 19)"),
+                Architecture.AMD64,
+                OperatingSystem.WINDOWS,
+                "zulu",
+                ReleaseType.EA));
+
+        results.forEach(r -> log.debug(r.toString()));
+
+        assertThat(results).isNotEmpty();
+
+        //Check that all results have an appropriate java version, arch, etc.
+        assertThat(results).allMatch(r -> r.getVersion().getMajorVersion() == 18)
+                           .allMatch(r -> r.getVersion().getQualifier().startsWith("ea-"))
+                           .allMatch(r -> r.getOperatingSystem() == OperatingSystem.WINDOWS)
+                           .allMatch(r -> r.getVendor().equalsIgnoreCase("zulu")) //canonical name, not the same as input vendor
+                           .map(FoojayArtifact::getArchitecture).containsAnyOf(Architecture.AMD64, Architecture.X86_64, Architecture.X64);
+    }
+
     /**
      * Noticed that searching for latest Java 18 can give the musl result for linuxes that don't specify this despite other glibc distributions being available so
      * there is a priority for results that have matching libc's.

@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.LibCType;
 import eu.hansolo.jdktools.PackageType;
+import eu.hansolo.jdktools.ReleaseStatus;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
 import io.foojay.api.discoclient.pkg.Distribution;
@@ -82,6 +83,23 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
             searchDistributions = Collections.singletonList(distribution);
         }
 
+        List<ReleaseStatus> releaseStatuses;
+        if (searchRequest.getReleaseType() == null)
+            releaseStatuses = null;
+        else
+        {
+            switch (searchRequest.getReleaseType())
+            {
+                case GA:
+                    releaseStatuses = Collections.singletonList(ReleaseStatus.GA);
+                    break;
+                case EA:
+                    releaseStatuses = Collections.singletonList(ReleaseStatus.EA);
+                    break;
+                default:
+                    throw new Error("Unknown release type: " + searchRequest.getReleaseType());
+            }
+        }
         for (VersionNumberAndLatest vlCriteria : foojaySearch)
         {
             List<Pkg> searchResults = discoClient.getPkgs(
@@ -96,7 +114,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                                                     PackageType.JDK,
                                                     null,
                                                     true,
-                                                    null,
+                                                    releaseStatuses,
                                                     null,
                                                     null,
                                                     ImmutableList.of(Scope.DIRECTLY_DOWNLOADABLE, Scope.BUILD_OF_OPEN_JDK, Scope.FREE_TO_USE_IN_PRODUCTION),

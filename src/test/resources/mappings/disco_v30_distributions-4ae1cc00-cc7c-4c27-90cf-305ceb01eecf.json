@@ -1,0 +1,19 @@
+{
+  "id" : "4ae1cc00-cc7c-4c27-90cf-305ceb01eecf",
+  "name" : "disco_v30_distributions",
+  "request" : {
+    "url" : "/disco/v3.0/distributions",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_distributions-4ae1cc00-cc7c-4c27-90cf-305ceb01eecf.json",
+    "headers" : {
+      "Date" : "Wed, 27 Jul 2022 22:15:42 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "4ae1cc00-cc7c-4c27-90cf-305ceb01eecf",
+  "persistent" : true,
+  "insertionIndex" : 8
+}
