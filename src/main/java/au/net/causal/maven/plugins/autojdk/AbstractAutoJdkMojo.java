@@ -33,6 +33,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
     static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
     static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
+    static final String PROPERTY_JDK_RELEASE_TYPE = "autojdk.jdk.releaseType";
     static final String PROPERTY_AUTOJDK_CONFIGURATION_FILE = "autojdk.config.file";
 
     @Component
@@ -63,6 +64,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     @Parameter(property = PROPERTY_JDK_VENDOR)
     private String requiredJdkVendor;
 
+    @Parameter(property = PROPERTY_JDK_RELEASE_TYPE, defaultValue = "GA", required = true)
+    private ReleaseType jdkReleaseType;
+
     @Parameter(property = PROPERTY_AUTOJDK_CONFIGURATION_FILE)
     private File autoJdkConfigurationFile;
 
@@ -88,6 +92,11 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     protected String getRequiredJdkVendor()
     {
         return requiredJdkVendor;
+    }
+
+    protected ReleaseType getJdkReleaseType()
+    {
+        return jdkReleaseType;
     }
 
     @Override

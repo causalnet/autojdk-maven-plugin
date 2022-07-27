@@ -12,13 +12,15 @@ public class JdkSearchRequest
     private final Architecture architecture;
     private final OperatingSystem operatingSystem;
     private final String vendor;
+    private final ReleaseType releaseType;
 
-    public JdkSearchRequest(VersionRange versionRange, Architecture architecture, OperatingSystem operatingSystem, String vendor)
+    public JdkSearchRequest(VersionRange versionRange, Architecture architecture, OperatingSystem operatingSystem, String vendor, ReleaseType releaseType)
     {
         this.versionRange = Objects.requireNonNull(versionRange);
         this.architecture = architecture;
         this.operatingSystem = operatingSystem;
         this.vendor = vendor;
+        this.releaseType = releaseType;
     }
 
     public VersionRange getVersionRange()
@@ -41,8 +43,13 @@ public class JdkSearchRequest
         return vendor;
     }
 
+    public ReleaseType getReleaseType()
+    {
+        return releaseType;
+    }
+
     public JdkSearchRequest withVersionRange(VersionRange versionRange)
     {
-        return new JdkSearchRequest(versionRange, getArchitecture(), getOperatingSystem(), getVendor());
+        return new JdkSearchRequest(versionRange, getArchitecture(), getOperatingSystem(), getVendor(), getReleaseType());
     }
 }

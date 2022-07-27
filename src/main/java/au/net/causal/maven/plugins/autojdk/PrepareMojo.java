@@ -1,11 +1,9 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.toolchain.model.ToolchainModel;
 
 import java.io.IOException;
@@ -26,7 +24,8 @@ public class PrepareMojo extends AbstractAutoJdkMojo
             JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(getRequiredJdkVersionRange(),
                                                                       platformTools.getCurrentArchitecture(),
                                                                       platformTools.getCurrentOperatingSystem(),
-                                                                      getRequiredJdkVendor());
+                                                                      getRequiredJdkVendor(),
+                                                                      getJdkReleaseType());
             LocalJdk localJdk = autoJdk().prepareJdk(jdkSearchRequest);
 
             getLog().info("Prepared local JDK: " + localJdk.getJdkDirectory());

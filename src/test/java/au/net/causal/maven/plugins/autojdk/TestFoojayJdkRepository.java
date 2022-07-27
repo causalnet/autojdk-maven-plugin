@@ -67,7 +67,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                                         VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                                                                         Architecture.AMD64,
                                                                         OperatingSystem.WINDOWS,
-                                                                        null));
+                                                                        null,
+                                                                        ReleaseType.GA));
         results.forEach(r -> log.debug(r.toString()));
 
         assertThat(results).isNotEmpty();
@@ -86,7 +87,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                                         VersionRange.createFromVersionSpec("[17,18)"),
                                                                         Architecture.AMD64,
                                                                         OperatingSystem.WINDOWS,
-                                                                        null));
+                                                                        null,
+                                                                        ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -106,7 +108,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("17.0.1"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -129,7 +132,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[7,8)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -149,7 +153,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                "zulu"));
+                "zulu",
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -170,7 +175,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[17.0.2, 17.0.3)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                "zulucore"));
+                "zulucore",
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -195,7 +201,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[18,19)"),
                 Architecture.AMD64,
                 OperatingSystem.LINUX,
-                null));
+                null,
+                ReleaseType.GA));
 
         List<FoojayArtifact> resultList = new ArrayList<>(results);
         resultList.sort(Comparator.<FoojayArtifact, String>comparing(x -> x.getFoojayPkg().getDistributionName())
@@ -239,7 +246,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                         VersionRange.createFromVersionSpec("[17.0.2,17.0.3)"),
                                                         Architecture.AMD64,
                                                         OperatingSystem.WINDOWS,
-                                                        "zulu"));
+                                                        "zulu",
+                                                        ReleaseType.GA));
 
         //There are 2 results, one with JavaFX and one without - so let's pick one for consistency
         FoojayArtifact result = results.stream()
@@ -286,7 +294,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[16.0.9,17)[18,)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -310,7 +319,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[16, 18)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -333,7 +343,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                                                         VersionRange.createFromVersionSpec("[17, 18)"),
                                                         Architecture.AMD64,
                                                         OperatingSystem.WINDOWS,
-                                                        "unknown-vendor"));
+                                                        "unknown-vendor",
+                                                        ReleaseType.GA));
         assertThat(results).isEmpty();
     }
 
@@ -422,7 +433,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[11,12)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 
@@ -449,7 +461,8 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
                 VersionRange.createFromVersionSpec("[17,18)"),
                 Architecture.AMD64,
                 OperatingSystem.WINDOWS,
-                null));
+                null,
+                ReleaseType.GA));
 
         results.forEach(r -> log.debug(r.toString()));
 

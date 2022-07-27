@@ -24,7 +24,8 @@ public class ShowPlatformSupportMojo extends AbstractAutoJdkMojo
         JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(getRequiredJdkVersionRange(),
                                                                   null,
                                                                   null,
-                                                                  getRequiredJdkVendor());
+                                                                  getRequiredJdkVendor(),
+                                                                  getJdkReleaseType());
 
         Collection<? extends JdkArtifact> results = autoJdk().findArtifactsInAllRepositories(jdkSearchRequest);
 
