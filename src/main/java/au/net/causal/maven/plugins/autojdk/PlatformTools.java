@@ -4,16 +4,33 @@ import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.util.Helper;
 
+import java.util.Locale;
+
 public class PlatformTools
 {
     public OperatingSystem getCurrentOperatingSystem()
     {
-        return Helper.getOperatingSystem();
+        OperatingSystem operatingSystem = Helper.getOperatingSystem();
+        if (operatingSystem == OperatingSystem.NOT_FOUND)
+            throw new RuntimeException("Could not determine current operating system.");
+
+        return operatingSystem;
     }
 
     public Architecture getCurrentArchitecture()
     {
-        return canonicalArchitecture(Helper.getArchitecture());
+        Architecture architecture = Helper.getArchitecture();
+        if (architecture == Architecture.NOT_FOUND)
+        {
+            //Fallback/special case for RISC-V which jdktools does not detect
+            String arch = System.getProperty("os.arch").toLowerCase(Locale.ENGLISH);
+            if (arch.contains("riscv64"))
+                return Architecture.RISCV64;
+
+            throw new RuntimeException("Could not determine current system architecture.");
+        }
+
+        return canonicalArchitecture(architecture);
     }
 
     /**
