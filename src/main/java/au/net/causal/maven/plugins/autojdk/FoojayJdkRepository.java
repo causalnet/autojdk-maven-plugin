@@ -298,7 +298,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
                 //Also upload metadata
                 Path metadataFile = downloadedFile.resolveSibling(downloadedFile.getFileName().toString() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION);
-                generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(jdkArtifact.getArchiveType())), metadataFile);
+                generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(jdkArtifact.getArchiveType()), jdkArtifact.getReleaseType()), metadataFile);
                 Artifact metadataArtifact = new DefaultArtifact(mavenArtifact.getGroupId(), mavenArtifact.getArtifactId(), mavenArtifact.getClassifier(), MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION, mavenArtifact.getVersion());
                 metadataArtifact = metadataArtifact.setFile(metadataFile.toFile());
 

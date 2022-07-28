@@ -41,12 +41,12 @@ public class AutoJdk
         this.autoJdkConfiguration = Objects.requireNonNull(autoJdkConfiguration);
     }
 
-    public List<? extends ToolchainModel> generateToolchainsFromLocalJdks()
+    public List<? extends ToolchainModel> generateToolchainsFromLocalJdks(ReleaseType releaseType)
     throws LocalJdkResolutionException
     {
         List<ToolchainModel> toolchains = new ArrayList<>();
 
-        List<LocalJdk> localJdks = new ArrayList<>(localJdkResolver.getInstalledJdks());
+        List<LocalJdk> localJdks = new ArrayList<>(localJdkResolver.getInstalledJdks(releaseType));
         localJdks.sort(localJdkComparator().reversed());
 
         for (LocalJdk jdk : localJdks)
@@ -129,6 +129,7 @@ public class AutoJdk
                     LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
                             downloadedJdk.getArtifact().getVendor(),
                             downloadedJdk.getArtifact().getVersion().toString(),
+                            downloadedJdk.getArtifact().getReleaseType(),
                             downloadedJdk.getArtifact().getArchitecture(),
                             downloadedJdk.getArtifact().getOperatingSystem()
                     );
@@ -197,7 +198,7 @@ public class AutoJdk
     protected LocalJdk findMatchingLocalJdk(JdkSearchRequest searchRequest)
     throws LocalJdkResolutionException
     {
-        Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks();
+        Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks(searchRequest.getReleaseType());
 
         //Find highest versioned match
         return jdks.stream()

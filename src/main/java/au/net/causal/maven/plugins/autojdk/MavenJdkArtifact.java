@@ -94,6 +94,16 @@ public class MavenJdkArtifact implements JdkArtifact
     }
 
     @Override
+    public ReleaseType getReleaseType()
+    {
+        ArtifactVersion v = getVersion();
+        if (v.getQualifier() != null && v.getQualifier().startsWith("ea-"))
+            return ReleaseType.EA;
+        else
+            return ReleaseType.GA;
+    }
+
+    @Override
     public String toString()
     {
         return "Maven artifact:" + getArtifact().toString();

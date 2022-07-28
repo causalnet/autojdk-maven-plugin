@@ -12,15 +12,17 @@ import java.util.Set;
 public class MavenJdkArtifactMetadata
 {
     private final Set<ArchiveType> archiveTypes;
+    private ReleaseType releaseType;
 
     public MavenJdkArtifactMetadata()
     {
-        this(Collections.emptySet());
+        this(Collections.emptySet(), ReleaseType.GA); //Default to GA if not present
     }
 
-    public MavenJdkArtifactMetadata(Collection<ArchiveType> archiveTypes)
+    public MavenJdkArtifactMetadata(Collection<ArchiveType> archiveTypes, ReleaseType releaseType)
     {
         this.archiveTypes = new LinkedHashSet<>(archiveTypes);
+        this.releaseType = releaseType;
     }
 
     @XmlElement(name = "archiveType")
@@ -33,5 +35,15 @@ public class MavenJdkArtifactMetadata
     {
         this.archiveTypes.clear();
         this.archiveTypes.addAll(archiveTypes);
+    }
+
+    public ReleaseType getReleaseType()
+    {
+        return releaseType;
+    }
+
+    public void setReleaseType(ReleaseType releaseType)
+    {
+        this.releaseType = releaseType;
     }
 }

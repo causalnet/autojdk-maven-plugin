@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk;
 import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.ReleaseStatus;
 import io.foojay.api.discoclient.pkg.Pkg;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
@@ -84,6 +85,15 @@ public class FoojayArtifact implements JdkArtifact
             default:
                 return null;
         }
+    }
+
+    @Override
+    public ReleaseType getReleaseType()
+    {
+        if (foojayPkg.getReleaseStatus() == ReleaseStatus.EA)
+            return ReleaseType.EA;
+        else
+            return ReleaseType.GA;
     }
 
     protected Pkg getFoojayPkg()

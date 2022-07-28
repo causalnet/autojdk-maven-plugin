@@ -7,6 +7,6 @@ import java.util.Collection;
  */
 public interface LocalJdkResolver
 {
-    public Collection<? extends LocalJdk> getInstalledJdks()
+    public Collection<? extends LocalJdk> getInstalledJdks(ReleaseType releaseType)
     throws LocalJdkResolutionException;
 }

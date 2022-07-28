@@ -83,7 +83,7 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
     }
 
     @Override
-    public Collection<? extends AutoJdkInstallation> getInstalledJdks()
+    public Collection<? extends AutoJdkInstallation> getInstalledJdks(ReleaseType releaseType)
     throws LocalJdkResolutionException
     {
         //If there's no JDK base directory, there are not JDKs
@@ -103,7 +103,8 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
                     if (!Files.isDirectory(jdkDirectory))
                         log.warn("JDK directory " + jdkDirectory + " does not exist for metadata file " + metadataXmlFile);
 
-                    jdks.add(new AutoJdkInstallation(jdkDirectory, metadata));
+                    if (releaseType == null || releaseType.equals(metadata.getReleaseType()))
+                        jdks.add(new AutoJdkInstallation(jdkDirectory, metadata));
                 }
                 catch (DataBindingException e)
                 {
@@ -159,6 +160,12 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
         public Path getJdkDirectory()
         {
             return jdkDirectory;
+        }
+
+        @Override
+        public ReleaseType getReleaseType()
+        {
+            return metadata.getReleaseType();
         }
     }
 

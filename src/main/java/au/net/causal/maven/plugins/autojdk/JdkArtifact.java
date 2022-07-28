@@ -13,4 +13,5 @@ public interface JdkArtifact
     public Architecture getArchitecture();
     public OperatingSystem getOperatingSystem();
     public ArchiveType getArchiveType();
+    public ReleaseType getReleaseType();
 }

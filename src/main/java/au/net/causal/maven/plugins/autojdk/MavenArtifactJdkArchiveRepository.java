@@ -65,7 +65,6 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         List<MavenJdkArtifact> matchingArtifacts = new ArrayList<>();
         for (String artifactIdToSearch : artifactIdsToSearch)
         {
-
             //Only need groupId/artifactId, it searches all extensions / classifiers
             //TODO or does it???
             Artifact searchArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactIdToSearch, null, searchRequest.getVersionRange().toString());
@@ -85,10 +84,15 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
                     String classifier = MavenJdkArtifact.makeClassifier(searchRequest.getOperatingSystem(), searchRequest.getArchitecture());
                     MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(artifactIdToSearch, classifier, foundVersion);
 
-                    for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
+                    //Only include result release type (EA/GA) matches search request (if specified)
+                    if (searchRequest.getReleaseType() == null || searchRequest.getReleaseType().equals(mavenMetadata.getReleaseType()))
                     {
-                        MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(mavenArtifactGroupId, artifactIdToSearch, foundVersion.toString(), searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), curArchiveType);
-                        matchingArtifacts.add(curMavenJdkArtifact);
+                        for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
+                        {
+                            MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(mavenArtifactGroupId, artifactIdToSearch, foundVersion.toString(),
+                                                                                        searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), curArchiveType);
+                            matchingArtifacts.add(curMavenJdkArtifact);
+                        }
                     }
                 }
             }
@@ -119,7 +123,7 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
             //TODO probably should turn this down because it's reasonable that Maven found artifacts for different OS/architecture
             log.warn("Could not find JDK metadata for " + mavenArtifactGroupId + ":" + artifactId + ":" + classifier + ":" + version, e);
 
-            return new MavenJdkArtifactMetadata();
+            return new MavenJdkArtifactMetadata(); //No archive types is like an empty result
         }
     }
 

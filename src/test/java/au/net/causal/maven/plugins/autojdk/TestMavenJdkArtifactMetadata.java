@@ -19,7 +19,7 @@ class TestMavenJdkArtifactMetadata
     void testSerialize()
     throws Exception
     {
-        MavenJdkArtifactMetadata metadata = new MavenJdkArtifactMetadata(EnumSet.of(ArchiveType.ZIP, ArchiveType.TAR_GZ));
+        MavenJdkArtifactMetadata metadata = new MavenJdkArtifactMetadata(EnumSet.of(ArchiveType.ZIP, ArchiveType.TAR_GZ), ReleaseType.GA);
 
         String result;
         try (StringWriter writer = new StringWriter())
@@ -34,7 +34,35 @@ class TestMavenJdkArtifactMetadata
     }
 
     @Test
-    void testDeserialize()
+    void testDeserializeGaReleaseType()
+    {
+        String xml = "<jdk><archiveType>ZIP</archiveType><releaseType>GA</releaseType></jdk>";
+        MavenJdkArtifactMetadata result;
+        try (StringReader reader = new StringReader(xml))
+        {
+            result = JAXB.unmarshal(reader, MavenJdkArtifactMetadata.class);
+        }
+
+        assertThat(result.getArchiveTypes()).containsExactly(ArchiveType.ZIP);
+        assertThat(result.getReleaseType()).isEqualTo(ReleaseType.GA);
+    }
+
+    @Test
+    void testDeserializeEaReleaseType()
+    {
+        String xml = "<jdk><archiveType>ZIP</archiveType><releaseType>EA</releaseType></jdk>";
+        MavenJdkArtifactMetadata result;
+        try (StringReader reader = new StringReader(xml))
+        {
+            result = JAXB.unmarshal(reader, MavenJdkArtifactMetadata.class);
+        }
+
+        assertThat(result.getArchiveTypes()).containsExactly(ArchiveType.ZIP);
+        assertThat(result.getReleaseType()).isEqualTo(ReleaseType.EA);
+    }
+
+    @Test
+    void testDeserializeDefaultReleaseType()
     {
         String xml = "<jdk><archiveType>ZIP</archiveType></jdk>";
         MavenJdkArtifactMetadata result;
@@ -44,5 +72,6 @@ class TestMavenJdkArtifactMetadata
         }
 
         assertThat(result.getArchiveTypes()).containsExactly(ArchiveType.ZIP);
+        assertThat(result.getReleaseType()).isEqualTo(ReleaseType.GA); //Should default to GA if element is not present
     }
 }

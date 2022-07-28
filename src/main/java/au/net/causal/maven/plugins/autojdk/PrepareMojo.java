@@ -30,7 +30,7 @@ public class PrepareMojo extends AbstractAutoJdkMojo
 
             getLog().info("Prepared local JDK: " + localJdk.getJdkDirectory());
 
-            List<? extends ToolchainModel> jdkToolchains = autoJdk().generateToolchainsFromLocalJdks();
+            List<? extends ToolchainModel> jdkToolchains = autoJdk().generateToolchainsFromLocalJdks(getJdkReleaseType());
             getLog().info(jdkToolchains.size() + " toolchains made from local JDKs");
             for (ToolchainModel jdkToolchain : jdkToolchains)
             {

@@ -13,4 +13,5 @@ public interface LocalJdk
     public OperatingSystem getOperatingSystem();
     public Architecture getArchitecture();
     public Path getJdkDirectory();
+    public ReleaseType getReleaseType();
 }
