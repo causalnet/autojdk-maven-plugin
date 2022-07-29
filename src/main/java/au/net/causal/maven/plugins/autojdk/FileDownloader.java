@@ -26,7 +26,94 @@ public interface FileDownloader
      */
     public Download downloadFile(URL url)
     throws IOException;
-    
+
+    public void addDownloadProgressListener(DownloadProgressListener listener);
+    public void removeDownloadProgressListener(DownloadProgressListener listener);
+
+    public static interface DownloadProgressListener
+    {
+        public void downloadStarted(DownloadStartedEvent event);
+        public void downloadProgress(DownloadProgressEvent event);
+        public void downloadCompleted(DownloadCompletedEvent event);
+        public void downloadFailed(DownloadFailedEvent event);
+    }
+
+    public static abstract class DownloadEvent
+    {
+        private final URL downloadUrl;
+        private final long downloadSize;
+
+        protected DownloadEvent(URL downloadUrl, long downloadSize)
+        {
+            this.downloadUrl = Objects.requireNonNull(downloadUrl);
+            this.downloadSize = downloadSize;
+        }
+
+        public URL getDownloadUrl()
+        {
+            return downloadUrl;
+        }
+
+        /**
+         * @return the known size of the download, or -1 if the size is unknown.
+         */
+        public long getDownloadSize()
+        {
+            return downloadSize;
+        }
+    }
+
+    public static class DownloadStartedEvent extends DownloadEvent
+    {
+        public DownloadStartedEvent(URL downloadUrl, long downloadSize)
+        {
+            super(downloadUrl, downloadSize);
+        }
+    }
+
+    public static class DownloadProgressEvent extends DownloadEvent
+    {
+        private final long bytesDownloaded;
+
+        public DownloadProgressEvent(URL downloadUrl, long downloadSize, long bytesDownloaded)
+        {
+            super(downloadUrl, downloadSize);
+            this.bytesDownloaded = bytesDownloaded;
+        }
+
+        /**
+         * @return the number of bytes downloaded so far.
+         */
+        public long getBytesDownloaded()
+        {
+            return bytesDownloaded;
+        }
+    }
+
+    public static class DownloadCompletedEvent extends DownloadEvent
+    {
+        public DownloadCompletedEvent(URL downloadUrl, long downloadSize)
+        {
+            super(downloadUrl, downloadSize);
+        }
+    }
+
+    public static class DownloadFailedEvent extends DownloadEvent
+    {
+        private final IOException error;
+
+        public DownloadFailedEvent(URL downloadUrl, long downloadSize, IOException error)
+        {
+            super(downloadUrl, downloadSize);
+            this.error = Objects.requireNonNull(error);
+        }
+
+        public IOException getError()
+        {
+            return error;
+        }
+    }
+
     /**
      * A file that was downloaded to a temporary directory on the filesystem.
      */

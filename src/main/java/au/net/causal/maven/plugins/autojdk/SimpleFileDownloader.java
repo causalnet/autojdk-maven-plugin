@@ -1,9 +1,11 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -11,12 +13,14 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class SimpleFileDownloader implements FileDownloader
 {
     private final ExceptionalSupplier<Path, IOException> tempDirectorySupplier;
+    private final List<DownloadProgressListener> downloadProgressListeners = new CopyOnWriteArrayList<>();
     
     public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
     {
@@ -28,9 +32,21 @@ public class SimpleFileDownloader implements FileDownloader
     {
         this(() -> tempDirectory);
     }
-    
+
     @Override
-    public Download downloadFile(URL url) 
+    public void addDownloadProgressListener(DownloadProgressListener listener)
+    {
+        downloadProgressListeners.add(Objects.requireNonNull(listener));
+    }
+
+    @Override
+    public void removeDownloadProgressListener(DownloadProgressListener listener)
+    {
+        downloadProgressListeners.remove(Objects.requireNonNull(listener));
+    }
+
+    @Override
+    public Download downloadFile(URL url)
     throws IOException
     {
         Objects.requireNonNull(url, "url == null");
@@ -71,15 +87,51 @@ public class SimpleFileDownloader implements FileDownloader
     throws IOException
     {
         long expectedSize = con.getContentLengthLong();
+        DownloadStartedEvent startEvent = new DownloadStartedEvent(url, expectedSize);
+        downloadProgressListeners.forEach(listener -> listener.downloadStarted(startEvent));
+
         try (InputStream is = con.getInputStream())
         {
-            //context.getLog().info("Saving " + apkFileUrl + " to file " + tempFile.toAbsolutePath().toString() + " (" + size + " bytes)...");
-            long numBytesCopied = Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
+            //This is faster but no progress
+            //long numBytesCopied = Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
+
+            long numBytesCopied;
+            try (OutputStream os = Files.newOutputStream(tempFile))
+            {
+                numBytesCopied = copy(is, os, startEvent);
+            }
 
             //If we have a valid expected file size, check it
             if (expectedSize >= 0L && expectedSize != numBytesCopied)
                 throw new TruncatedDownloadException(url, expectedSize, numBytesCopied);
         }
+        catch (IOException e)
+        {
+            DownloadFailedEvent failedEvent = new DownloadFailedEvent(url, expectedSize, e);
+            downloadProgressListeners.forEach(listener -> listener.downloadFailed(failedEvent));
+            throw e;
+        }
+
+        //Download completed
+        DownloadCompletedEvent completedEvent = new DownloadCompletedEvent(url, expectedSize);
+        downloadProgressListeners.forEach(listener -> listener.downloadCompleted(completedEvent));
+    }
+
+    private long copy(InputStream is, OutputStream os, DownloadStartedEvent startEvent)
+    throws IOException
+    {
+        long numBytesCopied = 0L;
+        byte[] buffer = new byte[IOUtils.DEFAULT_BUFFER_SIZE];
+        int read;
+        while ((read = is.read(buffer, 0, buffer.length)) >= 0)
+        {
+            os.write(buffer, 0, read);
+            numBytesCopied += read;
+
+            DownloadProgressEvent progressEvent = new DownloadProgressEvent(startEvent.getDownloadUrl(), startEvent.getDownloadSize(), numBytesCopied);
+            downloadProgressListeners.forEach(listener -> listener.downloadProgress(progressEvent));
+        }
+        return numBytesCopied;
     }
 
     /**
