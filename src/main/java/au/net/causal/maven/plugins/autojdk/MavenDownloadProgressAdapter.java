@@ -89,6 +89,9 @@ public class MavenDownloadProgressAdapter implements FileDownloader.DownloadProg
     {
         TransferResource res = transferResource(event);
         TransferEvent.Builder b = new TransferEvent.Builder(repoSession, res).setRequestType(TransferEvent.RequestType.GET);
+
+        b = b.addTransferredBytes(event.getDownloadSize());
+
         repoSession.getTransferListener().transferSucceeded(b.setType(TransferEvent.EventType.SUCCEEDED).build());
 
         //Last event, so remove from the map
