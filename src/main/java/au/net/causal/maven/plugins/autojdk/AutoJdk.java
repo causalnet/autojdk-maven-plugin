@@ -1,6 +1,5 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import com.google.common.annotations.VisibleForTesting;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
