@@ -7,6 +7,9 @@ import org.apache.maven.plugin.logging.SystemStreamLog;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Files;
@@ -16,25 +19,25 @@ public class ResumableFileDownloader extends SimpleFileDownloader
 {
     private final Log log;
 
-    public ResumableFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
+    public ResumableFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, ProxySelector proxySelector)
     {
-        this(tempDirectorySupplier, new SystemStreamLog());
+        this(tempDirectorySupplier, new SystemStreamLog(), proxySelector);
     }
 
-    public ResumableFileDownloader(Path tempDirectory)
+    public ResumableFileDownloader(Path tempDirectory, ProxySelector proxySelector)
     {
-        this(tempDirectory, new SystemStreamLog());
+        this(tempDirectory, new SystemStreamLog(), proxySelector);
     }
 
-    public ResumableFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, Log log)
+    public ResumableFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, Log log, ProxySelector proxySelector)
     {
-        super(tempDirectorySupplier);
+        super(tempDirectorySupplier, proxySelector);
         this.log = log;
     }
 
-    public ResumableFileDownloader(Path tempDirectory, Log log)
+    public ResumableFileDownloader(Path tempDirectory, Log log, ProxySelector proxySelector)
     {
-        super(tempDirectory);
+        super(tempDirectory, proxySelector);
         this.log = log;
     }
 
@@ -53,6 +56,8 @@ public class ResumableFileDownloader extends SimpleFileDownloader
         }
 
         //TODO maybe some connection timeout settings too on the URL connection, (plus the one we recreate down there)
+
+        Proxy proxy = getProxySelector().selectProxy(url);
 
         long totalBytesSaved = 0L;
 
@@ -75,7 +80,17 @@ public class ResumableFileDownloader extends SimpleFileDownloader
                         downloadIs.close();
 
                         //Prepare the next request that will be used in the next iteration of the do-while loop
-                        con = url.openConnection();
+                        if (proxy == null)
+                            con = url.openConnection();
+                        else
+                        {
+                            con = url.openConnection(proxy);
+
+                            Authenticator proxyAuthenticator = getProxySelector().proxyAuthenticator(url);
+                            if (proxyAuthenticator != null && con instanceof HttpURLConnection)
+                                ((HttpURLConnection)con).setAuthenticator(proxyAuthenticator);
+                        }
+
                         con.setRequestProperty(HttpHeaders.RANGE, "bytes=" + totalBytesSaved + "-");
 
                         long expectedRangeRequestContentLength = downloadSize - totalBytesSaved;

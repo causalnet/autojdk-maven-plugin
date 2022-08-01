@@ -6,6 +6,9 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -20,17 +23,35 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class SimpleFileDownloader implements FileDownloader
 {
     private final ExceptionalSupplier<Path, IOException> tempDirectorySupplier;
+    private final ProxySelector proxySelector;
     private final List<DownloadProgressListener> downloadProgressListeners = new CopyOnWriteArrayList<>();
     
-    public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
+    public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, ProxySelector proxySelector)
     {
         Objects.requireNonNull(tempDirectorySupplier, "tempDirectorySupplier == null");
+        Objects.requireNonNull(proxySelector, "proxySelector == null");
         this.tempDirectorySupplier = tempDirectorySupplier;
+        this.proxySelector = proxySelector;
+    }
+
+    public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
+    {
+        this(tempDirectorySupplier, new NoProxySelector());
+    }
+
+    public SimpleFileDownloader(Path tempDirectory, ProxySelector proxySelector)
+    {
+        this(() -> tempDirectory, proxySelector);
     }
 
     public SimpleFileDownloader(Path tempDirectory)
     {
-        this(() -> tempDirectory);
+        this(() -> tempDirectory, new NoProxySelector());
+    }
+
+    public ProxySelector getProxySelector()
+    {
+        return proxySelector;
     }
 
     @Override
@@ -79,7 +100,18 @@ public class SimpleFileDownloader implements FileDownloader
     protected void saveUrlToTempFile(URL url, Path tempFile)
     throws IOException
     {
-        URLConnection con = url.openConnection();
+        Proxy proxy = getProxySelector().selectProxy(url);
+        URLConnection con;
+        if (proxy == null)
+            con = url.openConnection();
+        else
+        {
+            con = url.openConnection(proxy);
+            Authenticator proxyAuthenticator = getProxySelector().proxyAuthenticator(url);
+            if (proxyAuthenticator != null && con instanceof HttpURLConnection)
+                ((HttpURLConnection)con).setAuthenticator(proxyAuthenticator);
+        }
+
         saveUrlToFileFromUrlConnection(url, tempFile, con);
     }
 
@@ -132,6 +164,27 @@ public class SimpleFileDownloader implements FileDownloader
             downloadProgressListeners.forEach(listener -> listener.downloadProgress(progressEvent));
         }
         return numBytesCopied;
+    }
+
+    public static interface ProxySelector
+    {
+        public Proxy selectProxy(URL url);
+        public Authenticator proxyAuthenticator(URL url);
+    }
+
+    public static class NoProxySelector implements ProxySelector
+    {
+        @Override
+        public Proxy selectProxy(URL url)
+        {
+            return null;
+        }
+
+        @Override
+        public Authenticator proxyAuthenticator(URL url)
+        {
+            return null;
+        }
     }
 
     /**

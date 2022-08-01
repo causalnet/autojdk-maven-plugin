@@ -127,7 +127,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         boolean offlineMode = session.isOffline();
 
-        FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory);
+        FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory, new MavenProxySelector(repoSession));
         fileDownloader.addDownloadProgressListener(new MavenDownloadProgressAdapter(repoSession));
 
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory());
