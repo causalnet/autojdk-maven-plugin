@@ -21,7 +21,7 @@ class TestUserConfiguredVendorService
     @Test
     void allVendors()
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
+        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -41,7 +41,7 @@ class TestUserConfiguredVendorService
                 "zulu",
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ), List.of());
+        ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -65,7 +65,7 @@ class TestUserConfiguredVendorService
                 "galah",
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ), List.of());
+        ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -87,7 +87,7 @@ class TestUserConfiguredVendorService
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
                 "liberica"
-        ), List.of());
+        ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -108,7 +108,7 @@ class TestUserConfiguredVendorService
                 "zulu",
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 AutoJdkConfiguration.WILDCARD_VENDOR
-        ), List.of());
+        ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -133,7 +133,7 @@ class TestUserConfiguredVendorService
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 "liberica"
-        ), List.of());
+        ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -155,7 +155,7 @@ class TestUserConfiguredVendorService
     @Test
     void ensureAllDefaultVendorsAreRealVendors()
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of());
+        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> knownVendors = vendorService.getAllVendors();

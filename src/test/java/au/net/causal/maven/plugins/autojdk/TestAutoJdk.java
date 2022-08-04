@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +31,12 @@ class TestAutoJdk
     @Mock
     private JdkArchiveRepository<JdkArtifact> jdkArchiveRepository;
 
+    @Mock
+    private JdkSearchUpdateChecker jdkSearchUpdateChecker;
+
+    @Mock
+    private Clock clock;
+
     @Nested
     class TestJdkComparator
     {
@@ -37,7 +44,7 @@ class TestAutoJdk
         void versionSorting()
         {
             AutoJdk autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget, Collections.singleton(jdkArchiveRepository), StandardVersionTranslationScheme.UNMODIFIED,
-                                          AutoJdkConfiguration.defaultAutoJdkConfiguration());
+                                          AutoJdkConfiguration.defaultAutoJdkConfiguration(), jdkSearchUpdateChecker, clock);
 
             List<JdkArtifact> artifacts = Arrays.asList(
                     new SimpleJdkArtifact("zulu", "7.0.2", ArchiveType.TAR_GZ),
@@ -60,7 +67,7 @@ class TestAutoJdk
         void archiveTypeSorting()
         {
             AutoJdk autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget, Collections.singleton(jdkArchiveRepository), StandardVersionTranslationScheme.UNMODIFIED,
-                                          AutoJdkConfiguration.defaultAutoJdkConfiguration());
+                                          AutoJdkConfiguration.defaultAutoJdkConfiguration(), jdkSearchUpdateChecker, clock);
 
 
             List<JdkArtifact> artifacts = Arrays.asList(
@@ -82,7 +89,7 @@ class TestAutoJdk
         void preferredVendorSortingDefault()
         {
             AutoJdk autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget, Collections.singleton(jdkArchiveRepository), StandardVersionTranslationScheme.UNMODIFIED,
-                                          AutoJdkConfiguration.defaultAutoJdkConfiguration());
+                                          AutoJdkConfiguration.defaultAutoJdkConfiguration(), jdkSearchUpdateChecker, clock);
 
             List<JdkArtifact> artifacts = Arrays.asList(
                     new SimpleJdkArtifact("galahjdk", "7.0.2", ArchiveType.TAR_GZ),
@@ -111,7 +118,7 @@ class TestAutoJdk
                                                   "galahjdk", //galahjdk is preferred
                                                   AutoJdkConfiguration.WILDCARD_VENDOR, //all unknowns
                                                   "zzzcockatoojdk"), //cockatoo jdk is preferred even less than unknowns
-                                               List.of()));
+                                               List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY), jdkSearchUpdateChecker, clock);
 
             List<JdkArtifact> artifacts = Arrays.asList(
                     new SimpleJdkArtifact("galahjdk", "7.0.2", ArchiveType.TAR_GZ),
@@ -136,7 +143,7 @@ class TestAutoJdk
         void combinedSorting()
         {
             AutoJdk autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget, Collections.singleton(jdkArchiveRepository), StandardVersionTranslationScheme.UNMODIFIED,
-                                          AutoJdkConfiguration.defaultAutoJdkConfiguration());
+                                          AutoJdkConfiguration.defaultAutoJdkConfiguration(), jdkSearchUpdateChecker, clock);
 
 
             List<JdkArtifact> artifacts = Arrays.asList(

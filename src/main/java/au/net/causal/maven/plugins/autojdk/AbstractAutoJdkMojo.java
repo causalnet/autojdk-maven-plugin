@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -155,7 +156,10 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
             jdkArchiveRepositories.add(new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk"));
 
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
-        autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration);
+        Clock clock = Clock.systemDefaultZone();
+        JdkSearchUpdateChecker jdkSearchUpdateChecker = new MetadataFileJdkSearchUpdateChecker(autojdkHome.getAutoJdkSearchUpToDateCheckMetadataFile());
+
+        autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration, jdkSearchUpdateChecker, clock);
 
         executeImpl();
     }

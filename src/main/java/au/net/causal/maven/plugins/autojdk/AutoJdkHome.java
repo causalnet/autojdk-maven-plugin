@@ -40,4 +40,9 @@ public class AutoJdkHome
     {
         return getAutoJdkHomeDirectory().resolve("autojdk-configuration.xml");
     }
+
+    public Path getAutoJdkSearchUpToDateCheckMetadataFile()
+    {
+        return getAutoJdkHomeDirectory().resolve("autojdk-search-uptodate-check.xml");
+    }
 }

@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -23,21 +26,29 @@ public class AutoJdk
 {
     private static final Logger log = LoggerFactory.getLogger(AutoJdk.class);
 
+    private static final PlatformTools platformTools = new PlatformTools();
+
     private final LocalJdkResolver localJdkResolver;
     private final JdkInstallationTarget jdkInstallationTarget;
     private final List<JdkArchiveRepository<?>> jdkArchiveRepositories;
     private final VersionTranslationScheme versionTranslationScheme;
     private final AutoJdkConfiguration autoJdkConfiguration;
+    private final JdkSearchUpdateChecker jdkSearchUpdateChecker;
+    private final Clock clock;
 
     public AutoJdk(LocalJdkResolver localJdkResolver, JdkInstallationTarget jdkInstallationTarget,
                    Collection<? extends JdkArchiveRepository<?>> jdkArchiveRepositories, VersionTranslationScheme versionTranslationScheme,
-                   AutoJdkConfiguration autoJdkConfiguration)
+                   AutoJdkConfiguration autoJdkConfiguration,
+                   JdkSearchUpdateChecker jdkSearchUpdateChecker,
+                   Clock clock)
     {
         this.localJdkResolver = Objects.requireNonNull(localJdkResolver);
         this.jdkInstallationTarget = Objects.requireNonNull(jdkInstallationTarget);
         this.jdkArchiveRepositories = List.copyOf(jdkArchiveRepositories);
         this.versionTranslationScheme = Objects.requireNonNull(versionTranslationScheme);
         this.autoJdkConfiguration = Objects.requireNonNull(autoJdkConfiguration);
+        this.jdkSearchUpdateChecker = Objects.requireNonNull(jdkSearchUpdateChecker);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     public List<? extends ToolchainModel> generateToolchainsFromLocalJdks(ReleaseType releaseType)
@@ -104,60 +115,91 @@ public class AutoJdk
         return results;
     }
 
+    private boolean updateCheckRequiredForJdkSearch(JdkSearchRequest searchRequest)
+    throws JdkSearchUpdateCheckException
+    {
+        Duration checkPolicy = autoJdkConfiguration.getJdkUpdatePolicyDuration();
+        if (checkPolicy == null) //null -> never check
+            return false;
+
+        Instant lastCheckTime = jdkSearchUpdateChecker.getLastCheckTime(searchRequest);
+        if (lastCheckTime == null) //If never checked before, then we'll need to check no matter what the current time is
+            return true;
+
+        Instant now = Instant.now(clock);
+
+        return lastCheckTime.plus(checkPolicy).isBefore(now);
+    }
+
     public LocalJdk prepareJdk(JdkSearchRequest searchRequest)
-    throws LocalJdkResolutionException, JdkNotFoundException, IOException
+    throws LocalJdkResolutionException, JdkNotFoundException, JdkSearchUpdateCheckException, IOException
     {
         searchRequest = translateSearchRequestForVersionTranslationScheme(searchRequest);
 
         //First scan all existing local JDKs and use one of those if there is a match
         LocalJdk localJdk = findMatchingLocalJdk(searchRequest);
 
-        if (localJdk != null)
-            return localJdk;
-
-        //If no local JDK found we need to download one from a remote repository
-        for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+        //Check if a download check is required
+        if (localJdk == null || updateCheckRequiredForJdkSearch(searchRequest))
         {
-            try
+            if (localJdk != null)
+                log.info("Found local JDK " + localJdk.getJdkDirectory() + ", checking if there is a more recent version available...");
+            else
+                log.info("No matching local JDK found, searching for one available to download...");
+
+            //Query remote repos and download if the local does not match
+            //TODO should we check all repos for up-to-date checks and pick the best?  That's not what happens at the moment
+            for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
             {
-                //Download a JDK archive
-                JdkArchive downloadedJdk = attemptDownloadJdkFromRemoteRepository(searchRequest, jdkArchiveRepository);
-                if (downloadedJdk != null)
+                try
                 {
-                    //Extract/install it locally
-                    LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
-                            downloadedJdk.getArtifact().getVendor(),
-                            downloadedJdk.getArtifact().getVersion().toString(),
-                            downloadedJdk.getArtifact().getReleaseType(),
-                            downloadedJdk.getArtifact().getArchitecture(),
-                            downloadedJdk.getArtifact().getOperatingSystem()
-                    );
+                    //Download a JDK archive
+                    JdkArchive downloadedJdk = attemptDownloadJdkFromRemoteRepository(searchRequest, jdkArchiveRepository, localJdk);
 
-                    Path newJdkInstallDirectory = jdkInstallationTarget.installJdkFromArchive(downloadedJdk.getFile().toPath(), downloadedJdkMetadata);
+                    //If we get here, the search/check worked, so update the up-to-date metadata
+                    jdkSearchUpdateChecker.saveLastCheckTime(searchRequest, Instant.now(clock));
 
-                    log.info("Installed new JDK to: " + newJdkInstallDirectory);
+                    if (downloadedJdk != null)
+                    {
+                        //Extract/install it locally
+                        LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
+                                downloadedJdk.getArtifact().getVendor(),
+                                downloadedJdk.getArtifact().getVersion().toString(),
+                                downloadedJdk.getArtifact().getReleaseType(),
+                                downloadedJdk.getArtifact().getArchitecture(),
+                                downloadedJdk.getArtifact().getOperatingSystem()
+                        );
 
-                    //Rescan - should find it now
-                    localJdk = findMatchingLocalJdk(searchRequest);
+                        Path newJdkInstallDirectory = jdkInstallationTarget.installJdkFromArchive(downloadedJdk.getFile().toPath(), downloadedJdkMetadata);
 
-                    if (localJdk == null)
-                        throw new JdkNotFoundException("Could not find JDK locally even after it downloaded and installed");
+                        log.info("Installed new JDK to: " + newJdkInstallDirectory);
 
-                    return localJdk;
+                        //Rescan - should find it now
+                        localJdk = findMatchingLocalJdk(searchRequest);
+
+                        if (localJdk == null)
+                            throw new JdkNotFoundException("Could not find JDK locally even after it downloaded and installed");
+
+                        return localJdk;
+                    }
+                }
+                catch (JdkRepositoryException e)
+                {
+                    log.warn("Failed to search repository for JDK: " + e.getMessage());
+                    log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
                 }
             }
-            catch (JdkRepositoryException e)
-            {
-                log.warn("Failed to search repository for JDK: " + e.getMessage());
-                log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
-            }
         }
+
+        //Might have found a local JDK but up-to-date check didn't get any better options
+        if (localJdk != null)
+            return localJdk;
 
         //If we get here we couldn't download or install a JDK
         throw new JdkNotFoundException("Could not find suitable JDK");
     }
 
-    private <A extends JdkArtifact > JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository < A > repository)
+    private <A extends JdkArtifact> JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository<A> repository, LocalJdk bestMatchingLocalJdk)
     throws JdkRepositoryException
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
@@ -167,8 +209,21 @@ public class AutoJdk
         if (selectedJdk == null)
             return null;
 
+        //If the best matching local JDK matches the best remote one, just use that and don't download it again
+        if (bestMatchingLocalJdk != null && remoteJdkMatchesLocalJdk(selectedJdk, bestMatchingLocalJdk))
+            return null;
+
         log.info("Installing JDK from " + selectedJdk);
         return repository.resolveArchive(selectedJdk);
+    }
+
+    private boolean remoteJdkMatchesLocalJdk(JdkArtifact remoteJdk, LocalJdk localJdk)
+    {
+        return Objects.equals(remoteJdk.getVersion(), localJdk.getVersion()) &&
+               Objects.equals(remoteJdk.getOperatingSystem(), localJdk.getOperatingSystem()) &&
+               Objects.equals(platformTools.canonicalArchitecture(remoteJdk.getArchitecture()), platformTools.canonicalArchitecture(localJdk.getArchitecture())) &&
+               Objects.equals(remoteJdk.getVendor(), localJdk.getVendor()) &&
+               Objects.equals(remoteJdk.getReleaseType(), localJdk.getReleaseType());
     }
 
     /**
@@ -202,7 +257,7 @@ public class AutoJdk
         //Find highest versioned match
         return jdks.stream()
                    .filter(jdk -> localJdkMatches(jdk, searchRequest))
-                   .max(Comparator.comparing(LocalJdk::getVersion))
+                   .max(localJdkComparator())
                    .orElse(null);
     }
 

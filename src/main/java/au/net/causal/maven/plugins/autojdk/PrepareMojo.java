@@ -48,6 +48,10 @@ public class PrepareMojo extends AbstractAutoJdkMojo
         {
             throw new MojoExecutionException("Failed to generate toolchains from local JDKs: " + e.getMessage(), e);
         }
+        catch (JdkSearchUpdateCheckException e)
+        {
+            throw new MojoExecutionException("Failed to determine up-to-date check metadata for JDKs: " + e.getMessage(), e);
+        }
         catch (IOException e)
         {
             throw new MojoExecutionException("I/O error preparing JDK: " + e, e);
