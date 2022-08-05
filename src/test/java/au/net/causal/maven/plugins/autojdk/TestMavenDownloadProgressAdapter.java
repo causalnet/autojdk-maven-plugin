@@ -25,7 +25,7 @@ class TestMavenDownloadProgressAdapter
     private TransferListener transferListener;
 
     @BeforeEach
-    private void setUpSession()
+    void setUpSession()
     {
         when(repoSession.getTransferListener()).thenReturn(transferListener);
     }

@@ -21,7 +21,7 @@ class TestResumableFileDownloader
     private ResumableFileDownloader downloader;
 
     @BeforeEach
-    private void setUpDownloader(@TempDir Path tempDir)
+    void setUpDownloader(@TempDir Path tempDir)
     {
         downloader = new ResumableFileDownloader(tempDir, new SimpleFileDownloader.NoProxySelector());
     }

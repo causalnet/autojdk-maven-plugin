@@ -25,7 +25,7 @@ class TestMetadataFileJdkSearchUpdateChecker
     private Path metadataFile;
 
     @BeforeEach
-    private void setUp(@TempDir Path tempDir)
+    void setUp(@TempDir Path tempDir)
     {
         metadataFile = tempDir.resolve("metadata.xml");
         checker = new MetadataFileJdkSearchUpdateChecker(metadataFile);

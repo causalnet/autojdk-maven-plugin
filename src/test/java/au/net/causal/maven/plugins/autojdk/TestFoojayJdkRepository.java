@@ -53,7 +53,7 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
     private FileDownloader fileDownloader;
 
     @BeforeEach
-    private void setUp()
+    void setUp()
     {
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
         jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID);

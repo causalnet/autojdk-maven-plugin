@@ -31,7 +31,7 @@ class TestJdkInstaller
     private Path jdksInstallationDirectory;
 
     @BeforeEach
-    private void setUpJdkInstaller()
+    void setUpJdkInstaller()
     throws IOException
     {
         jdksInstallationDirectory = Files.createTempDirectory(tempDir, "autojdk-test-jdks");

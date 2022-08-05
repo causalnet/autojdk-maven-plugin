@@ -21,7 +21,7 @@ class TestSimpleFileDownloader
     private SimpleFileDownloader downloader;
 
     @BeforeEach
-    private void setUpDownloader(@TempDir Path tempDir)
+    void setUpDownloader(@TempDir Path tempDir)
     {
         downloader = new SimpleFileDownloader(tempDir);
     }

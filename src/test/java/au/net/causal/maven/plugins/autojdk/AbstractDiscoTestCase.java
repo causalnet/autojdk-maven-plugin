@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.*;
 
 /**
  * Superclass of discovery client test cases that use WireMock to avoid having to do real network requests.
+ * <p>
  *
  * Test Foojay disco client but use Wiremock playback to avoid smashing their server in our tests.
  * When run with {@link #WIREMOCK_RECORD} as false (the default) it will use a previously recorded session and avoid
@@ -38,7 +39,7 @@ abstract class AbstractDiscoTestCase
     private static final Properties originalProperties = new Properties();
 
     @BeforeAll
-    private static void setUpDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
+    static void setUpDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
     {
         Properties properties = PropertyManager.INSTANCE.getProperties();
         originalProperties.putAll(properties);
@@ -48,7 +49,7 @@ abstract class AbstractDiscoTestCase
     }
 
     @AfterAll
-    private static void restoreDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
+    static void restoreDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
     {
         Properties properties = PropertyManager.INSTANCE.getProperties();
         properties.putAll(originalProperties);
@@ -56,7 +57,7 @@ abstract class AbstractDiscoTestCase
     }
 
     @BeforeEach
-    private void setUpWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
+    void setUpWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
     throws IOException
     {
         if (WIREMOCK_RECORD)
@@ -90,7 +91,7 @@ abstract class AbstractDiscoTestCase
     }
 
     @AfterEach
-    private void finishWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
+    void finishWireMock(WireMockRuntimeInfo wireMockRuntimeInfo)
     {
         if (WIREMOCK_RECORD)
             wireMockRuntimeInfo.getWireMock().stopStubRecording();
