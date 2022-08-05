@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 /**
@@ -22,7 +23,7 @@ public class CompositeJdkArchiveRepository implements JdkArchiveRepository<Compo
     private final List<JdkArchiveRepository<?>> repositories;
     private final SearchType searchType;
 
-    public CompositeJdkArchiveRepository(SearchType searchType, List<JdkArchiveRepository<?>> repositories)
+    public CompositeJdkArchiveRepository(SearchType searchType, List<? extends JdkArchiveRepository<?>> repositories)
     {
         this.searchType = Objects.requireNonNull(searchType);
         this.repositories = List.copyOf(repositories);
@@ -134,8 +135,35 @@ public class CompositeJdkArchiveRepository implements JdkArchiveRepository<Compo
         {
             return getWrappedArtifact().getReleaseType();
         }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof WrappedJdkArtifact)) return false;
+            WrappedJdkArtifact<?> that = (WrappedJdkArtifact<?>) o;
+            return getSourceRepository().equals(that.getSourceRepository()) && getWrappedArtifact().equals(that.getWrappedArtifact());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getSourceRepository(), getWrappedArtifact());
+        }
+
+        @Override
+        public String toString()
+        {
+            return new StringJoiner(", ", WrappedJdkArtifact.class.getSimpleName() + "[", "]")
+                    .add("sourceRepository=" + sourceRepository)
+                    .add("artifact=" + artifact)
+                    .toString();
+        }
     }
 
+    /**
+     * How searches are performed across multiple repositories.
+     */
     public static enum SearchType
     {
         /**

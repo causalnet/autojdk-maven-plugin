@@ -97,22 +97,19 @@ public class AutoJdk
 
     public Collection<? extends JdkArtifact> findArtifactsInAllRepositories(JdkSearchRequest searchRequest)
     {
-        List<JdkArtifact> results = new ArrayList<>();
-        for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+        JdkArchiveRepository<?> compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
+                                                                                        SearchErrorLoggingJdkArchiveRepository.wrapRepositories(jdkArchiveRepositories));
+        try
         {
-            try
-            {
-                Collection<? extends JdkArtifact> repositoryResults = jdkArchiveRepository.search(searchRequest);
-                results.addAll(repositoryResults);
-            }
-            catch (JdkRepositoryException e)
-            {
-                log.warn("Failed to search repository for JDK: " + e.getMessage());
-                log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
-            }
+            return compositeRepository.search(searchRequest);
         }
-
-        return results;
+        catch (JdkRepositoryException e)
+        {
+            //Each individual repo is wrapped to log/supress errors, so really we should never get here
+            log.warn("Failed to search repository for JDK: " + e.getMessage());
+            log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
+            return List.of();
+        }
     }
 
     private boolean updateCheckRequiredForJdkSearch(JdkSearchRequest searchRequest)
@@ -199,7 +196,7 @@ public class AutoJdk
         throw new JdkNotFoundException("Could not find suitable JDK");
     }
 
-    private <A extends JdkArtifact> JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository<A> repository, LocalJdk bestMatchingLocalJdk)
+    private <A extends JdkArtifact > JdkArchive attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository < A > repository, LocalJdk bestMatchingLocalJdk)
     throws JdkRepositoryException
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
