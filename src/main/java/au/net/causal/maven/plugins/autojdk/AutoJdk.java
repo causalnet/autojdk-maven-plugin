@@ -145,46 +145,46 @@ public class AutoJdk
                 log.info("No matching local JDK found, searching for one available to download...");
 
             //Query remote repos and download if the local does not match
-            //TODO should we check all repos for up-to-date checks and pick the best?  That's not what happens at the moment
-            for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+            //TODO should we check all repos for up-to-date checks and pick the best?
+            CompositeJdkArchiveRepository compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
+                                                                                                  SearchErrorLoggingJdkArchiveRepository.wrapRepositories(jdkArchiveRepositories));
+            try
             {
-                try
+                //Download a JDK archive
+                JdkArchive downloadedJdk = attemptDownloadJdkFromRemoteRepository(searchRequest, compositeRepository, localJdk);
+
+                //If we get here, the search/check worked, so update the up-to-date metadata
+                jdkSearchUpdateChecker.saveLastCheckTime(searchRequest, Instant.now(clock));
+
+                if (downloadedJdk != null)
                 {
-                    //Download a JDK archive
-                    JdkArchive downloadedJdk = attemptDownloadJdkFromRemoteRepository(searchRequest, jdkArchiveRepository, localJdk);
+                    //Extract/install it locally
+                    LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
+                            downloadedJdk.getArtifact().getVendor(),
+                            downloadedJdk.getArtifact().getVersion().toString(),
+                            downloadedJdk.getArtifact().getReleaseType(),
+                            downloadedJdk.getArtifact().getArchitecture(),
+                            downloadedJdk.getArtifact().getOperatingSystem()
+                    );
 
-                    //If we get here, the search/check worked, so update the up-to-date metadata
-                    jdkSearchUpdateChecker.saveLastCheckTime(searchRequest, Instant.now(clock));
+                    Path newJdkInstallDirectory = jdkInstallationTarget.installJdkFromArchive(downloadedJdk.getFile().toPath(), downloadedJdkMetadata);
 
-                    if (downloadedJdk != null)
-                    {
-                        //Extract/install it locally
-                        LocalJdkMetadata downloadedJdkMetadata = new LocalJdkMetadata(
-                                downloadedJdk.getArtifact().getVendor(),
-                                downloadedJdk.getArtifact().getVersion().toString(),
-                                downloadedJdk.getArtifact().getReleaseType(),
-                                downloadedJdk.getArtifact().getArchitecture(),
-                                downloadedJdk.getArtifact().getOperatingSystem()
-                        );
+                    log.info("Installed new JDK to: " + newJdkInstallDirectory);
 
-                        Path newJdkInstallDirectory = jdkInstallationTarget.installJdkFromArchive(downloadedJdk.getFile().toPath(), downloadedJdkMetadata);
+                    //Rescan - should find it now
+                    localJdk = findMatchingLocalJdk(searchRequest);
 
-                        log.info("Installed new JDK to: " + newJdkInstallDirectory);
+                    if (localJdk == null)
+                        throw new JdkNotFoundException("Could not find JDK locally even after it downloaded and installed");
 
-                        //Rescan - should find it now
-                        localJdk = findMatchingLocalJdk(searchRequest);
-
-                        if (localJdk == null)
-                            throw new JdkNotFoundException("Could not find JDK locally even after it downloaded and installed");
-
-                        return localJdk;
-                    }
+                    return localJdk;
                 }
-                catch (JdkRepositoryException e)
-                {
-                    log.warn("Failed to search repository for JDK: " + e.getMessage());
-                    log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
-                }
+            }
+            catch (JdkRepositoryException e)
+            {
+                //We already have error wrapping on the repo list, so shouldn't really get here
+                log.warn("Failed to search repository for JDK: " + e.getMessage());
+                log.debug("Failed to search repository for JDK: " + e.getMessage(), e);
             }
         }
 
