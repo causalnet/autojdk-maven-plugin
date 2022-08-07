@@ -209,6 +209,9 @@
                         <user.home>${project.build.directory}/it/userhome</user.home>
                     </properties>
                     <scriptVariables>
+                        <pluginGroupId>${project.groupId}</pluginGroupId>
+                        <pluginArtifactId>${project.artifactId}</pluginArtifactId>
+                        <pluginVersion>${project.version}</pluginVersion>
                     </scriptVariables>
                 </configuration>
                 <executions>
