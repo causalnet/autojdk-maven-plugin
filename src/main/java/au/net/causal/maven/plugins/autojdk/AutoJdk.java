@@ -97,6 +97,7 @@ public class AutoJdk
 
     public Collection<? extends JdkArtifact> findArtifactsInAllRepositories(JdkSearchRequest searchRequest)
     {
+        searchRequest = translateSearchRequestForVersionTranslationScheme(searchRequest);
         JdkArchiveRepository<?> compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
                                                                                         SearchErrorLoggingJdkArchiveRepository.wrapRepositories(jdkArchiveRepositories));
         try
