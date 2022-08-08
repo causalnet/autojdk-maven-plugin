@@ -18,6 +18,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Entrypoint to AutoJDK functionality.
@@ -295,5 +296,22 @@ public class AutoJdk
         //See DefaultToolchain.matchesRequirements()
         //and RequirementMatcherFactory.VersionMatcher.matches()
         return RequirementMatcherFactory.createVersionMatcher(jdkVersion.toString()).matches(searchVersion.toString());
+    }
+
+    public void deleteLocalJdks(JdkSearchRequest searchRequest)
+    throws LocalJdkResolutionException
+    {
+        Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks(searchRequest.getReleaseType());
+
+        List<? extends LocalJdk> matchingLocalJdks = jdks.stream()
+                                                         .filter(jdk -> localJdkMatches(jdk, searchRequest))
+                                                         .collect(Collectors.toList());
+
+        for (LocalJdk localJdk : matchingLocalJdks)
+        {
+            log.info("Plan to delete: " + localJdk.getJdkDirectory());
+        }
+
+        //TODO
     }
 }
