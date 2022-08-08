@@ -11,8 +11,12 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Properties;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -31,6 +35,8 @@ import static org.assertj.core.api.Assertions.*;
 @WireMockTest
 abstract class AbstractDiscoTestCase
 {
+    private static final Logger log = LoggerFactory.getLogger(AbstractDiscoTestCase.class);
+
     /**
      * Set this to true to record from the real system so we can play back later.
      */
@@ -41,6 +47,20 @@ abstract class AbstractDiscoTestCase
     @BeforeAll
     static void setUpDisco(WireMockRuntimeInfo wireMockRuntimeInfo)
     {
+        //Ensure user home exists - while it's not critical it does there is an ugly error message if it doesn't exist
+        Path homeDirectory = Path.of(Constants.HOME_FOLDER);
+        if (Files.notExists(homeDirectory))
+        {
+            try
+            {
+                Files.createDirectories(homeDirectory);
+            }
+            catch (IOException e)
+            {
+                log.warn("Failed to create DiscoClient home directory: " + e, e);
+            }
+        }
+
         Properties properties = PropertyManager.INSTANCE.getProperties();
         originalProperties.putAll(properties);
 
