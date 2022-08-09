@@ -20,4 +20,15 @@ public interface JdkInstallationTarget
      */
     public Path installJdkFromArchive(Path jdkArchive, LocalJdkMetadata metadata)
     throws IOException;
+
+    /**
+     * Deletes a previously installed JDK and associated metadata.
+     *
+     * @param jdkDirectory the directory the JDK exists in.  This will be the same directly at one time previously returned from
+     *                      {@link #installJdkFromArchive(Path, LocalJdkMetadata)}.
+     *
+     * @throws IOException if an error occurs.
+     */
+    public void deleteJdk(Path jdkDirectory)
+    throws IOException;
 }

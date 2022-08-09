@@ -298,20 +298,27 @@ public class AutoJdk
         return RequirementMatcherFactory.createVersionMatcher(jdkVersion.toString()).matches(searchVersion.toString());
     }
 
-    public void deleteLocalJdks(JdkSearchRequest searchRequest)
-    throws LocalJdkResolutionException
+    public int deleteLocalJdks(JdkSearchRequest searchRequest)
+    throws LocalJdkResolutionException, IOException
     {
         Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks(searchRequest.getReleaseType());
 
         List<? extends LocalJdk> matchingLocalJdks = jdks.stream()
                                                          .filter(jdk -> localJdkMatches(jdk, searchRequest))
                                                          .collect(Collectors.toList());
-
         for (LocalJdk localJdk : matchingLocalJdks)
         {
-            log.info("Plan to delete: " + localJdk.getJdkDirectory());
+            deleteLocalJdk(localJdk);
         }
 
-        //TODO
+        return matchingLocalJdks.size();
+    }
+
+    public void deleteLocalJdk(LocalJdk localJdk)
+    throws IOException
+    {
+        log.info("Deleting local JDK: " + localJdk.getJdkDirectory());
+        jdkInstallationTarget.deleteJdk(localJdk.getJdkDirectory());
+        //TODO also Maven local repo
     }
 }

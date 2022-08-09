@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.NotDirectoryException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,7 +57,7 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
     {
         //Extract the JDK
         Path jdkExtractionDir = jdkInstaller.installJdkArchive(jdkArchive, defaultJdkNameForMetadata(metadata));
-        Path jdkMetadataFile = jdkExtractionDir.resolveSibling(jdkExtractionDir.getFileName().toString() + ".xml");
+        Path jdkMetadataFile = metadataFileForJdkInstallationDirectory(jdkExtractionDir);
 
         //Generate the metadata file
         try
@@ -68,6 +70,29 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
         }
 
         return jdkExtractionDir;
+    }
+
+    @Override
+    public void deleteJdk(Path jdkDirectory) throws IOException
+    {
+        //Ensure everything exists
+        if (Files.notExists(jdkDirectory))
+            throw new NoSuchFileException(jdkDirectory.toString());
+        if (!Files.isDirectory(jdkDirectory))
+            throw new NotDirectoryException(jdkDirectory.toString());
+
+        Path jdkMetadataFile = metadataFileForJdkInstallationDirectory(jdkDirectory);
+        if (Files.notExists(jdkMetadataFile))
+            throw new IOException("Missing metadata file for JDK: " + jdkDirectory, new NoSuchFileException(jdkMetadataFile.toString()));
+
+        //Perform deletion of metadata and JDK directory
+        Files.delete(jdkMetadataFile);
+        FileUtils.deleteDirectory(jdkDirectory.toFile());
+    }
+
+    private Path metadataFileForJdkInstallationDirectory(Path jdkDirectory)
+    {
+        return jdkDirectory.resolveSibling(jdkDirectory.getFileName().toString() + ".xml");
     }
 
     /**

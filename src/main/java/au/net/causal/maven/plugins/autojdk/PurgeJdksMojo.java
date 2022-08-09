@@ -7,6 +7,9 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
+import java.io.IOException;
+import java.util.List;
+
 /**
  * Removes JDKs previously installed by autojdk from the local system.
  */
@@ -16,15 +19,23 @@ public class PurgeJdksMojo extends AbstractAutoJdkMojo
     @Parameter(property = "autojdk.purge.version", required = true)
     private String purgeJdkVersion;
 
-    @Parameter(property = "autojdk.purge.vendor")
+    @Parameter(property = "autojdk.purge.vendor", required = true)
     private String purgeJdkVendor;
 
     @Parameter(property = "autojdk.purge.releaseType", defaultValue = "GA", required = true)
     private ReleaseType purgeJdkReleaseType;
 
+    private static final String PURGE_ALL_VENDOR = "all";
+
     @Override
     protected void executeImpl() throws MojoExecutionException, MojoFailureException
     {
+        String vendorPurgeFilter;
+        if (PURGE_ALL_VENDOR.equals(purgeJdkVendor))
+            vendorPurgeFilter = null;
+        else
+            vendorPurgeFilter = purgeJdkVendor;
+
         VersionRange purgeJdkVersionRange;
         try
         {
@@ -38,13 +49,18 @@ public class PurgeJdksMojo extends AbstractAutoJdkMojo
         JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(purgeJdkVersionRange,
                                                                   platformTools.getCurrentArchitecture(),
                                                                   platformTools.getCurrentOperatingSystem(),
-                                                                  purgeJdkVendor,
+                                                                  vendorPurgeFilter,
                                                                   purgeJdkReleaseType);
         try
         {
-            autoJdk().deleteLocalJdks(jdkSearchRequest);
+            int numJdksDeleted = autoJdk().deleteLocalJdks(jdkSearchRequest);
+            if (numJdksDeleted > 0)
+                getLog().info(numJdksDeleted + " JDK(s) deleted");
+            else
+                getLog().warn("No JDKs matching criteria were found to be deleted.");
+
         }
-        catch (LocalJdkResolutionException e)
+        catch (LocalJdkResolutionException | IOException e)
         {
             throw new MojoExecutionException("Error deleting local JDKs: " + e, e);
         }
