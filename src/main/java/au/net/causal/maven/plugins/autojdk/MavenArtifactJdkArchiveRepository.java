@@ -142,4 +142,12 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
             throw new JdkRepositoryException("Failed to resolve JDK archive: " + e.getMessage(), e);
         }
     }
+
+    @Override
+    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest) throws JdkRepositoryException
+    {
+        //TODO implement using shared local-repo code
+
+        return Collections.emptyList();
+    }
 }

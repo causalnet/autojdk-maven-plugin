@@ -70,4 +70,11 @@ public class SearchErrorLoggingJdkArchiveRepository<A extends JdkArtifact> imple
     {
         return repository.resolveArchive(jdkArtifact);
     }
+
+    @Override
+    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest)
+    throws JdkRepositoryException
+    {
+        return repository.purgeCache(jdkMatchSearchRequest);
+    }
 }

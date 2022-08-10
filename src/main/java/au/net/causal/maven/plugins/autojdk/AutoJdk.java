@@ -299,7 +299,7 @@ public class AutoJdk
     }
 
     public int deleteLocalJdks(JdkSearchRequest searchRequest)
-    throws LocalJdkResolutionException, IOException
+    throws LocalJdkResolutionException, IOException, JdkRepositoryException
     {
         Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks(searchRequest.getReleaseType());
 
@@ -315,10 +315,18 @@ public class AutoJdk
     }
 
     public void deleteLocalJdk(LocalJdk localJdk)
-    throws IOException
+    throws IOException, JdkRepositoryException
     {
         log.info("Deleting local JDK: " + localJdk.getJdkDirectory());
         jdkInstallationTarget.deleteJdk(localJdk.getJdkDirectory());
-        //TODO also Maven local repo
+
+        for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+        {
+            Collection<? extends JdkArchive> purgedArchives = jdkArchiveRepository.purgeCache(new JdkPurgeCacheRequest(localJdk.getVersion(), localJdk.getArchitecture(), localJdk.getOperatingSystem(), localJdk.getVendor(), localJdk.getReleaseType()));
+            for (JdkArchive purgedArchive : purgedArchives)
+            {
+                log.info("Deleted cache file: " + purgedArchive.getFile());
+            }
+        }
     }
 }

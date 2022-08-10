@@ -8,7 +8,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 
 import java.io.IOException;
-import java.util.List;
 
 /**
  * Removes JDKs previously installed by autojdk from the local system.
@@ -60,7 +59,7 @@ public class PurgeJdksMojo extends AbstractAutoJdkMojo
                 getLog().warn("No JDKs matching criteria were found to be deleted.");
 
         }
-        catch (LocalJdkResolutionException | IOException e)
+        catch (LocalJdkResolutionException | IOException | JdkRepositoryException e)
         {
             throw new MojoExecutionException("Error deleting local JDKs: " + e, e);
         }

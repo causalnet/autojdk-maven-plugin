@@ -22,6 +22,8 @@ import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.installation.InstallationException;
+import org.eclipse.aether.repository.LocalArtifactRequest;
+import org.eclipse.aether.repository.LocalArtifactResult;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
@@ -30,6 +32,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -299,7 +302,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
                 //Also upload metadata
                 Path metadataFile = downloadedFile.resolveSibling(downloadedFile.getFileName().toString() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION);
                 generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(jdkArtifact.getArchiveType()), jdkArtifact.getReleaseType()), metadataFile);
-                Artifact metadataArtifact = new DefaultArtifact(mavenArtifact.getGroupId(), mavenArtifact.getArtifactId(), mavenArtifact.getClassifier(), MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION, mavenArtifact.getVersion());
+                Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(mavenArtifact);
                 metadataArtifact = metadataArtifact.setFile(metadataFile.toFile());
 
                 InstallRequest metadataInstallRequest = new InstallRequest();
@@ -323,8 +326,63 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         }
     }
 
+    private Artifact autoJdkMetadataArtifactForArchive(Artifact archiveArtifact)
+    {
+        return new DefaultArtifact(archiveArtifact.getGroupId(), archiveArtifact.getArtifactId(), archiveArtifact.getClassifier(),
+                                   MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION, archiveArtifact.getVersion());
+    }
+
+    @Override
+    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest)
+    throws JdkRepositoryException
+    {
+        //TODO migrate this code so it can be shared
+
+        List<JdkArchive> archivesPurged = new ArrayList<>();
+
+        //Purse all archive types that match the rest of the criteria
+        for (ArchiveType archiveType : ArchiveType.values())
+        {
+            JdkArtifact jdkArtifact = jdkMatchSearchRequest.toJdkArtifact(archiveType);
+            Artifact mavenArtifact = mavenArtifactForJdkArtifact(jdkArtifact);
+            LocalArtifactRequest localRequest = new LocalArtifactRequest(mavenArtifact, null, null);
+            LocalArtifactResult localResult = repositorySystemSession.getLocalRepositoryManager().find(repositorySystemSession, localRequest);
+            if (localResult.isAvailable())
+            {
+                try
+                {
+                    Files.deleteIfExists(localResult.getFile().toPath());
+                    archivesPurged.add(new JdkArchive(jdkArtifact, localResult.getFile()));
+                }
+                catch (IOException e)
+                {
+                    throw new JdkRepositoryException("Failed to delete local repository archive " + localResult.getFile() + ": " + e.getMessage(), e);
+                }
+            }
+
+            //Also metadata if it exists
+            Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(mavenArtifact);
+            LocalArtifactRequest localMetadataRequest = new LocalArtifactRequest(metadataArtifact, null, null);
+            LocalArtifactResult localMetadataResult = repositorySystemSession.getLocalRepositoryManager().find(repositorySystemSession, localMetadataRequest);
+            if (localMetadataResult.isAvailable())
+            {
+                try
+                {
+                    Files.deleteIfExists(localMetadataResult.getFile().toPath());
+                }
+                catch (IOException e)
+                {
+                    throw new JdkRepositoryException("Failed to delete local repository metadata " + localMetadataResult.getFile() + ": " + e.getMessage(), e);
+                }
+            }
+        }
+
+        return archivesPurged;
+    }
+
     private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
     {
+        //TODO JAXB context caching
         JAXB.marshal(metadata, file.toFile());
     }
 

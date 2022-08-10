@@ -68,6 +68,18 @@ public class CompositeJdkArchiveRepository implements JdkArchiveRepository<Compo
         return wrappedJdkArtifact.getSourceRepository().resolveArchive(wrappedJdkArtifact.getWrappedArtifact());
     }
 
+    @Override
+    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest) throws JdkRepositoryException
+    {
+        List<JdkArchive> archives = new ArrayList<>();
+        for (JdkArchiveRepository<?> repository : repositories)
+        {
+            Collection<? extends JdkArchive> curPurgeResult = repository.purgeCache(jdkMatchSearchRequest);
+            archives.addAll(curPurgeResult);
+        }
+        return archives;
+    }
+
     /**
      * A JDK artifact that wraps another one from another repository, maintaining a reference to the original artifact and repository.
      *
