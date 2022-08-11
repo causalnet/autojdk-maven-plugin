@@ -325,7 +325,7 @@ public class AutoJdk
             Collection<? extends JdkArchive> purgedArchives = jdkArchiveRepository.purgeCache(new JdkPurgeCacheRequest(localJdk.getVersion(), localJdk.getArchitecture(), localJdk.getOperatingSystem(), localJdk.getVendor(), localJdk.getReleaseType()));
             for (JdkArchive purgedArchive : purgedArchives)
             {
-                log.info("Deleted cache file: " + purgedArchive.getFile());
+                log.info("Deleted cached archive: " + purgedArchive.getFile());
             }
         }
     }
