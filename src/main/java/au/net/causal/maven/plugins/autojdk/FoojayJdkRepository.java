@@ -19,11 +19,8 @@ import org.apache.maven.toolchain.RequirementMatcherFactory;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.installation.InstallationException;
-import org.eclipse.aether.repository.LocalArtifactRequest;
-import org.eclipse.aether.repository.LocalArtifactResult;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
@@ -32,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -43,23 +39,17 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
+public class FoojayJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<FoojayArtifact>
 {
     private final DiscoClient discoClient;
-    private final RepositorySystem repositorySystem;
-    private final RepositorySystemSession repositorySystemSession;
     private final FileDownloader fileDownloader;
-
-    private final String mavenArtifactGroupId;
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                FileDownloader fileDownloader, String mavenArtifactGroupId)
     {
+        super(repositorySystem, repositorySystemSession, mavenArtifactGroupId);
         this.discoClient = Objects.requireNonNull(discoClient);
-        this.repositorySystem = Objects.requireNonNull(repositorySystem);
-        this.repositorySystemSession = Objects.requireNonNull(repositorySystemSession);
         this.fileDownloader = Objects.requireNonNull(fileDownloader);
-        this.mavenArtifactGroupId = Objects.requireNonNull(mavenArtifactGroupId);
     }
 
     @Override
@@ -261,7 +251,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         ArtifactRequest lookupRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList() /*no remotes, local only*/, null);
         try
         {
-            ArtifactResult lookupResult = repositorySystem.resolveArtifact(repositorySystemSession, lookupRequest);
+            ArtifactResult lookupResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), lookupRequest);
 
             //If we get here, archive was found in the local repo so just return that
             return new JdkArchive(jdkArtifact, lookupResult.getArtifact().getFile());
@@ -291,12 +281,12 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
             request.setArtifacts(Collections.singletonList(mavenArtifact));
             try
             {
-                repositorySystem.install(repositorySystemSession, request);
+                getRepositorySystem().install(getRepositorySystemSession(), request);
 
                 //Re-resolve to local repo so file of artifact gets filled in
                 mavenArtifact = mavenArtifact.setFile(null);
                 ArtifactRequest reresolveRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList(), null);
-                ArtifactResult reresolveResult = repositorySystem.resolveArtifact(repositorySystemSession, reresolveRequest);
+                ArtifactResult reresolveResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), reresolveRequest);
                 File jdkArchiveInLocalRepo = reresolveResult.getArtifact().getFile();
 
                 //Also upload metadata
@@ -307,7 +297,7 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
 
                 InstallRequest metadataInstallRequest = new InstallRequest();
                 metadataInstallRequest.setArtifacts(Collections.singleton(metadataArtifact));
-                repositorySystem.install(repositorySystemSession, metadataInstallRequest);
+                getRepositorySystem().install(getRepositorySystemSession(), metadataInstallRequest);
 
                 return new JdkArchive(jdkArtifact, jdkArchiveInLocalRepo);
             }
@@ -326,69 +316,10 @@ public class FoojayJdkRepository implements JdkArchiveRepository<FoojayArtifact>
         }
     }
 
-    private Artifact autoJdkMetadataArtifactForArchive(Artifact archiveArtifact)
-    {
-        return new DefaultArtifact(archiveArtifact.getGroupId(), archiveArtifact.getArtifactId(), archiveArtifact.getClassifier(),
-                                   MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION, archiveArtifact.getVersion());
-    }
-
-    @Override
-    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest)
-    throws JdkRepositoryException
-    {
-        //TODO migrate this code so it can be shared
-
-        List<JdkArchive> archivesPurged = new ArrayList<>();
-
-        //Purse all archive types that match the rest of the criteria
-        for (ArchiveType archiveType : ArchiveType.values())
-        {
-            JdkArtifact jdkArtifact = jdkMatchSearchRequest.toJdkArtifact(archiveType);
-            Artifact mavenArtifact = mavenArtifactForJdkArtifact(jdkArtifact);
-            LocalArtifactRequest localRequest = new LocalArtifactRequest(mavenArtifact, null, null);
-            LocalArtifactResult localResult = repositorySystemSession.getLocalRepositoryManager().find(repositorySystemSession, localRequest);
-            if (localResult.isAvailable())
-            {
-                try
-                {
-                    Files.deleteIfExists(localResult.getFile().toPath());
-                    archivesPurged.add(new JdkArchive(jdkArtifact, localResult.getFile()));
-                }
-                catch (IOException e)
-                {
-                    throw new JdkRepositoryException("Failed to delete local repository archive " + localResult.getFile() + ": " + e.getMessage(), e);
-                }
-            }
-
-            //Also metadata if it exists
-            Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(mavenArtifact);
-            LocalArtifactRequest localMetadataRequest = new LocalArtifactRequest(metadataArtifact, null, null);
-            LocalArtifactResult localMetadataResult = repositorySystemSession.getLocalRepositoryManager().find(repositorySystemSession, localMetadataRequest);
-            if (localMetadataResult.isAvailable())
-            {
-                try
-                {
-                    Files.deleteIfExists(localMetadataResult.getFile().toPath());
-                }
-                catch (IOException e)
-                {
-                    throw new JdkRepositoryException("Failed to delete local repository metadata " + localMetadataResult.getFile() + ": " + e.getMessage(), e);
-                }
-            }
-        }
-
-        return archivesPurged;
-    }
-
     private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
     {
         //TODO JAXB context caching
         JAXB.marshal(metadata, file.toFile());
-    }
-
-    protected Artifact mavenArtifactForJdkArtifact(JdkArtifact jdkArtifact)
-    {
-        return new MavenJdkArtifact(mavenArtifactGroupId, jdkArtifact).getArtifact();
     }
 
     protected static class VersionNumberAndLatest

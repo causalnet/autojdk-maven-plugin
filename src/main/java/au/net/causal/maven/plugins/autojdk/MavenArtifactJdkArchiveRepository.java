@@ -14,26 +14,19 @@ import org.slf4j.LoggerFactory;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<MavenJdkArtifact>
+public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<MavenJdkArtifact>
 {
     private static final Logger log = LoggerFactory.getLogger(MavenArtifactJdkArchiveRepository.class);
 
-    static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
-
-    private final RepositorySystem repositorySystem;
-    private final RepositorySystemSession repositorySystemSession;
     private final List<RemoteRepository> remoteRepositories;
-    private final String mavenArtifactGroupId;
     private final VendorService vendorService;
 
     public MavenArtifactJdkArchiveRepository(RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                              List<RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
                                              VendorService vendorService)
     {
-        this.repositorySystem = Objects.requireNonNull(repositorySystem);
-        this.repositorySystemSession = Objects.requireNonNull(repositorySystemSession);
+        super(repositorySystem, repositorySystemSession, mavenArtifactGroupId);
         this.remoteRepositories = List.copyOf(remoteRepositories);
-        this.mavenArtifactGroupId = Objects.requireNonNull(mavenArtifactGroupId);
         this.vendorService = Objects.requireNonNull(vendorService);
     }
 
@@ -67,12 +60,12 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         {
             //Only need groupId/artifactId, it searches all extensions / classifiers
             //TODO or does it???
-            Artifact searchArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactIdToSearch, null, searchRequest.getVersionRange().toString());
+            Artifact searchArtifact = new DefaultArtifact(getMavenArtifactGroupId(), artifactIdToSearch, null, searchRequest.getVersionRange().toString());
             VersionRangeRequest versionSearchRequest = new VersionRangeRequest(searchArtifact, remoteRepositories, null);
 
             try
             {
-                VersionRangeResult versionSearchResult = repositorySystem.resolveVersionRange(repositorySystemSession, versionSearchRequest);
+                VersionRangeResult versionSearchResult = getRepositorySystem().resolveVersionRange(getRepositorySystemSession(), versionSearchRequest);
                 for (Exception warningException : versionSearchResult.getExceptions())
                 {
                     log.debug("Problem performing version search: " + warningException.getMessage(), warningException);
@@ -82,14 +75,15 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
                 for (Version foundVersion : foundVersions)
                 {
                     String classifier = MavenJdkArtifact.makeClassifier(searchRequest.getOperatingSystem(), searchRequest.getArchitecture());
-                    MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(artifactIdToSearch, classifier, foundVersion);
+                    Artifact searchArtifactWithClassifier = new DefaultArtifact(searchArtifact.getGroupId(), searchArtifact.getArtifactId(), classifier, searchArtifact.getExtension(), foundVersion.toString());
+                    MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(searchArtifactWithClassifier);
 
                     //Only include result release type (EA/GA) matches search request (if specified)
                     if (searchRequest.getReleaseType() == null || searchRequest.getReleaseType().equals(mavenMetadata.getReleaseType()))
                     {
                         for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
                         {
-                            MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(mavenArtifactGroupId, artifactIdToSearch, foundVersion.toString(),
+                            MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(getMavenArtifactGroupId(), artifactIdToSearch, foundVersion.toString(),
                                                                                         searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), curArchiveType);
                             matchingArtifacts.add(curMavenJdkArtifact);
                         }
@@ -105,14 +99,13 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         return matchingArtifacts;
     }
 
-    private MavenJdkArtifactMetadata readMavenJdkArtifactMetadata(String artifactId, String classifier, Version version)
+    private MavenJdkArtifactMetadata readMavenJdkArtifactMetadata(Artifact archiveArtifact)
     {
-
-        Artifact metadataArtifact = new DefaultArtifact(mavenArtifactGroupId, artifactId, classifier, AUTOJDK_METADATA_EXTENSION, version.toString());
+        Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(archiveArtifact);
         ArtifactRequest metadataRequest = new ArtifactRequest(metadataArtifact, remoteRepositories, null);
         try
         {
-            ArtifactResult metadataResult = repositorySystem.resolveArtifact(repositorySystemSession, metadataRequest);
+            ArtifactResult metadataResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), metadataRequest);
 
             //TODO better management of JAXB context
             return JAXB.unmarshal(metadataResult.getArtifact().getFile(), MavenJdkArtifactMetadata.class);
@@ -121,7 +114,7 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         {
             //Could not find metadata, so just ignore this search result
             //TODO probably should turn this down because it's reasonable that Maven found artifacts for different OS/architecture
-            log.warn("Could not find JDK metadata for " + mavenArtifactGroupId + ":" + artifactId + ":" + classifier + ":" + version, e);
+            log.warn("Could not find JDK metadata for " + metadataArtifact, e);
 
             return new MavenJdkArtifactMetadata(); //No archive types is like an empty result
         }
@@ -133,7 +126,7 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
         ArtifactRequest request = new ArtifactRequest(jdkArtifact.getArtifact(), remoteRepositories, null);
         try
         {
-            ArtifactResult result = repositorySystem.resolveArtifact(repositorySystemSession, request);
+            ArtifactResult result = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), request);
             return new JdkArchive(jdkArtifact, result.getArtifact().getFile());
         }
         catch (ArtifactResolutionException e)
@@ -141,13 +134,5 @@ public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<M
             //Could not find artifact
             throw new JdkRepositoryException("Failed to resolve JDK archive: " + e.getMessage(), e);
         }
-    }
-
-    @Override
-    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest) throws JdkRepositoryException
-    {
-        //TODO implement using shared local-repo code
-
-        return Collections.emptyList();
     }
 }
