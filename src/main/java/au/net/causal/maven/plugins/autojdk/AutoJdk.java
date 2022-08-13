@@ -298,7 +298,7 @@ public class AutoJdk
         return RequirementMatcherFactory.createVersionMatcher(jdkVersion.toString()).matches(searchVersion.toString());
     }
 
-    public int deleteLocalJdks(JdkSearchRequest searchRequest)
+    public int deleteLocalJdks(JdkSearchRequest searchRequest, boolean deleteCaches)
     throws LocalJdkResolutionException, IOException, JdkRepositoryException
     {
         Collection<? extends LocalJdk> jdks = localJdkResolver.getInstalledJdks(searchRequest.getReleaseType());
@@ -308,24 +308,29 @@ public class AutoJdk
                                                          .collect(Collectors.toList());
         for (LocalJdk localJdk : matchingLocalJdks)
         {
-            deleteLocalJdk(localJdk);
+            deleteLocalJdk(localJdk, deleteCaches);
         }
 
         return matchingLocalJdks.size();
     }
 
-    public void deleteLocalJdk(LocalJdk localJdk)
+    public void deleteLocalJdk(LocalJdk localJdk, boolean deleteCaches)
     throws IOException, JdkRepositoryException
     {
         log.info("Deleting local JDK: " + localJdk.getJdkDirectory());
         jdkInstallationTarget.deleteJdk(localJdk.getJdkDirectory());
 
-        for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
+        if (deleteCaches)
         {
-            Collection<? extends JdkArchive> purgedArchives = jdkArchiveRepository.purgeCache(new JdkPurgeCacheRequest(localJdk.getVersion(), localJdk.getArchitecture(), localJdk.getOperatingSystem(), localJdk.getVendor(), localJdk.getReleaseType()));
-            for (JdkArchive purgedArchive : purgedArchives)
+            for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
             {
-                log.info("Deleted cached archive: " + purgedArchive.getFile());
+                Collection<? extends JdkArchive> purgedArchives = jdkArchiveRepository.purgeCache(
+                        new JdkPurgeCacheRequest(localJdk.getVersion(), localJdk.getArchitecture(), localJdk.getOperatingSystem(), localJdk.getVendor(),
+                                                 localJdk.getReleaseType()));
+                for (JdkArchive purgedArchive : purgedArchives)
+                {
+                    log.info("Deleted cached archive: " + purgedArchive.getFile());
+                }
             }
         }
     }

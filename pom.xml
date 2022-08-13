@@ -212,6 +212,7 @@
                         <pluginGroupId>${project.groupId}</pluginGroupId>
                         <pluginArtifactId>${project.artifactId}</pluginArtifactId>
                         <pluginVersion>${project.version}</pluginVersion>
+                        <userHome>${project.build.directory}/it/userhome</userHome>
                     </scriptVariables>
                 </configuration>
                 <executions>
