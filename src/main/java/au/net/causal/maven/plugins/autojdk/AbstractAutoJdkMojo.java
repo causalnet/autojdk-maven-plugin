@@ -18,6 +18,7 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
 
+import javax.xml.datatype.DatatypeFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,6 +32,7 @@ import java.util.Map;
 public abstract class AbstractAutoJdkMojo extends AbstractMojo
 {
     private static final String VERSION_TRANSLATION_SCHEME_AUTO = "auto";
+    private static final String UPDATE_POLICY_NEVER = "never";
 
     static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
     static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
@@ -73,6 +75,15 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
     @Parameter(property = "autojdk.versionTranslationScheme", required = true, defaultValue = VERSION_TRANSLATION_SCHEME_AUTO)
     private String versionTranslationScheme;
+
+    /**
+     * How AutoJDK checks for updates, specified in a duration format.  e.g. PT12H for checking every 12 hours.
+     * If specified, this overrides the configuration a user has in their AutoJDK configuration file.
+     * If not specified, the configuration file setting or a default is used.  To always check, specify a zero value
+     * e.g. PT0M.  To never check, specify a value of 'never'.
+     */
+    @Parameter(property = "autojdk.update.policy")
+    private String updatePolicy;
 
     private AutoJdk autoJdk;
     protected final PlatformTools platformTools = new PlatformTools();
@@ -142,6 +153,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         {
             throw new MojoExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }
+        configureAutoJdkUpdatePolicy(autoJdkConfiguration);
 
         VendorService allVendorService;
         if (offlineMode)
@@ -162,6 +174,30 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration, jdkSearchUpdateChecker, clock);
 
         executeImpl();
+    }
+
+    private void configureAutoJdkUpdatePolicy(AutoJdkConfiguration configuration)
+    throws MojoExecutionException
+    {
+        //Not specified, don't override anything
+        if (updatePolicy == null)
+            return;
+
+        //Replace
+        if (UPDATE_POLICY_NEVER.equalsIgnoreCase(updatePolicy))
+        {
+            configuration.setJdkUpdatePolicy(null);
+            return;
+        }
+
+        try
+        {
+            configuration.setJdkUpdatePolicy(DatatypeFactory.newDefaultInstance().newDuration(updatePolicy));
+        }
+        catch (IllegalArgumentException e)
+        {
+            throw new MojoExecutionException("Error parsing updatePolicy value '" + updatePolicy + "'.", e);
+        }
     }
 
     private synchronized Path tempDownloadDirectory()
