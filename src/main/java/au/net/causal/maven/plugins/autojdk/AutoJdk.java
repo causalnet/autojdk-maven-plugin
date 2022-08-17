@@ -117,17 +117,17 @@ public class AutoJdk
     private boolean updateCheckRequiredForJdkSearch(JdkSearchRequest searchRequest)
     throws JdkSearchUpdateCheckException
     {
-        Duration checkPolicy = autoJdkConfiguration.getJdkUpdatePolicyDuration();
-        if (checkPolicy == null) //null -> never check
+        //If not configured, do not perform check
+        //TODO need better way of doing defaults
+        if (autoJdkConfiguration.getJdkUpdatePolicy() == null || autoJdkConfiguration.getJdkUpdatePolicy().getValue() == null)
             return false;
 
-        Instant lastCheckTime = jdkSearchUpdateChecker.getLastCheckTime(searchRequest);
-        if (lastCheckTime == null) //If never checked before, then we'll need to check no matter what the current time is
-            return true;
+        JdkUpdatePolicy checkPolicy = autoJdkConfiguration.getJdkUpdatePolicy().getValue();
 
+        Instant lastCheckTime = jdkSearchUpdateChecker.getLastCheckTime(searchRequest);
         Instant now = Instant.now(clock);
 
-        return lastCheckTime.plus(checkPolicy).isBefore(now);
+        return checkPolicy.isUpdateCheckRequired(lastCheckTime, now);
     }
 
     public LocalJdk prepareJdk(JdkSearchRequest searchRequest)

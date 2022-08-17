@@ -3,17 +3,16 @@ package au.net.causal.maven.plugins.autojdk;
 import jakarta.xml.bind.JAXB;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
+import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlRootElement;
-import jakarta.xml.bind.annotation.XmlTransient;
+import jakarta.xml.bind.annotation.XmlType;
 
 import javax.xml.datatype.DatatypeConstants;
 import javax.xml.datatype.DatatypeFactory;
-import javax.xml.datatype.Duration;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +21,7 @@ import java.util.List;
  * User-global configuration for AutoJDK.
  */
 @XmlRootElement(name = "autojdk-configuration")
+@XmlType(propOrder={})
 public class AutoJdkConfiguration
 {
     /**
@@ -44,7 +44,7 @@ public class AutoJdkConfiguration
     /**
      * Default JDK update policy duration of 1 day.
      */
-    static final Duration DEFAULT_JDK_UPDATE_POLICY = DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED);
+    static final JdkUpdatePolicySpec DEFAULT_JDK_UPDATE_POLICY = new JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED)));
 
     //Method instead of variable since extension exclusion element is mutable
     static List<ExtensionExclusion> defaultExtensionExclusions()
@@ -54,7 +54,7 @@ public class AutoJdkConfiguration
 
     private final List<String> vendors = new ArrayList<>();
     private final List<ExtensionExclusion> extensionExclusions = new ArrayList<>();
-    private Duration jdkUpdatePolicy;
+    private JdkUpdatePolicySpec jdkUpdatePolicy;
 
     public static AutoJdkConfiguration defaultAutoJdkConfiguration()
     {
@@ -66,7 +66,7 @@ public class AutoJdkConfiguration
         this(Collections.emptyList(), Collections.emptyList(), null);
     }
 
-    public AutoJdkConfiguration(List<String> vendors, List<ExtensionExclusion> extensionExclusions, Duration jdkUpdatePolicy)
+    public AutoJdkConfiguration(List<String> vendors, List<ExtensionExclusion> extensionExclusions, JdkUpdatePolicySpec jdkUpdatePolicy)
     {
         this.vendors.addAll(vendors);
         this.extensionExclusions.addAll(extensionExclusions);
@@ -104,35 +104,14 @@ public class AutoJdkConfiguration
     }
 
     @XmlElement(name = "jdk-update-policy")
-    public Duration getJdkUpdatePolicy()
+    public JdkUpdatePolicySpec getJdkUpdatePolicy()
     {
         return jdkUpdatePolicy;
     }
 
-    public void setJdkUpdatePolicy(Duration jdkUpdatePolicy)
+    public void setJdkUpdatePolicy(JdkUpdatePolicySpec jdkUpdatePolicy)
     {
         this.jdkUpdatePolicy = jdkUpdatePolicy;
-    }
-
-    //TODO a better structure to this, the nullability is confusing
-    @XmlTransient
-    public java.time.Duration getJdkUpdatePolicyDuration()
-    {
-        if (jdkUpdatePolicy == null)
-            return null;
-
-        java.time.Duration d = java.time.Duration.ZERO;
-
-        //These two are estimations but probably good enough if a user really wants to use them
-        d = d.plus(ChronoUnit.YEARS.getDuration().multipliedBy(jdkUpdatePolicy.getYears()));
-        d = d.plus(ChronoUnit.MONTHS.getDuration().multipliedBy(jdkUpdatePolicy.getMonths()));
-
-        d = d.plusDays(jdkUpdatePolicy.getDays());
-        d = d.plusHours(jdkUpdatePolicy.getHours());
-        d = d.plusMinutes(jdkUpdatePolicy.getMinutes());
-        d = d.plusSeconds(jdkUpdatePolicy.getSeconds());
-
-        return d;
     }
 
     public static AutoJdkConfiguration fromFile(Path file)
@@ -148,6 +127,7 @@ public class AutoJdkConfiguration
         }
     }
 
+    @XmlType(propOrder={})
     public static class ExtensionExclusion
     {
         private String version;
@@ -181,6 +161,41 @@ public class AutoJdkConfiguration
         public void setSubstitution(String substitution)
         {
             this.substitution = substitution;
+        }
+    }
+
+    /**
+     * Holds a choice of update policy.
+     */
+    public static class JdkUpdatePolicySpec
+    {
+        private JdkUpdatePolicy value;
+
+        public JdkUpdatePolicySpec()
+        {
+        }
+
+        public JdkUpdatePolicySpec(JdkUpdatePolicy jdkUpdatePolicy)
+        {
+            this.value = jdkUpdatePolicy;
+        }
+
+        /**
+         * Which update policy was specified.
+         */
+        @XmlElements({
+                @XmlElement(name = "never", type = JdkUpdatePolicy.Never.class, required = true),
+                @XmlElement(name = "always", type = JdkUpdatePolicy.Always.class, required = true),
+                @XmlElement(name = "every", type = JdkUpdatePolicy.EveryDuration.class, required = true)
+        })
+        public JdkUpdatePolicy getValue()
+        {
+            return value;
+        }
+
+        public void setValue(JdkUpdatePolicy value)
+        {
+            this.value = value;
         }
     }
 }

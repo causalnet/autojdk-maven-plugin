@@ -33,6 +33,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 {
     private static final String VERSION_TRANSLATION_SCHEME_AUTO = "auto";
     private static final String UPDATE_POLICY_NEVER = "never";
+    private static final String UPDATE_POLICY_ALWAYS = "always";
 
     static final String PROPERTY_JDK_VENDOR = "autojdk.jdk.vendor";
     static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
@@ -79,8 +80,8 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     /**
      * How AutoJDK checks for updates, specified in a duration format.  e.g. PT12H for checking every 12 hours.
      * If specified, this overrides the configuration a user has in their AutoJDK configuration file.
-     * If not specified, the configuration file setting or a default is used.  To always check, specify a zero value
-     * e.g. PT0M.  To never check, specify a value of 'never'.
+     * If not specified, the configuration file setting or a default is used.  To always check, specify a value of 'always'.
+     * To never check, specify a value of 'never'.
      */
     @Parameter(property = "autojdk.update.policy")
     private String updatePolicy;
@@ -183,16 +184,21 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         if (updatePolicy == null)
             return;
 
-        //Replace
+        //Replace if specific values
         if (UPDATE_POLICY_NEVER.equalsIgnoreCase(updatePolicy))
         {
-            configuration.setJdkUpdatePolicy(null);
+            configuration.setJdkUpdatePolicy(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.Never()));
+            return;
+        }
+        if (UPDATE_POLICY_ALWAYS.equalsIgnoreCase(updatePolicy))
+        {
+            configuration.setJdkUpdatePolicy(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.Always()));
             return;
         }
 
         try
         {
-            configuration.setJdkUpdatePolicy(DatatypeFactory.newDefaultInstance().newDuration(updatePolicy));
+            configuration.setJdkUpdatePolicy(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(updatePolicy))));
         }
         catch (IllegalArgumentException e)
         {
