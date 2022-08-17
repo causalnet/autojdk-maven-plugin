@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:noNamespaceSchemaLocation="target/generated-resources/schemagen/schema1.xsd">
+    <vendors>
+        <vendor>zulu</vendor>
+        <vendor>*</vendor>
+    </vendors>
+    <jdk-update-policy>
+        <every>P2DT1H</every>
+    </jdk-update-policy>
+</autojdk-configuration>

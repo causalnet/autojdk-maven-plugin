@@ -277,6 +277,25 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>jaxb2-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>generate-xml-schema</id>
+                        <goals>
+                            <goal>schemagen</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <sources>
+                        <source>src/main/java/au/net/causal/maven/plugins/autojdk/AutoJdkConfiguration.java</source>
+                    </sources>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
