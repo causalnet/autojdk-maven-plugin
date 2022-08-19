@@ -114,6 +114,22 @@ public class AutoJdkConfiguration
         this.jdkUpdatePolicy = jdkUpdatePolicy;
     }
 
+    /**
+     * Fills in values in this configuration from the defaults for each element that has not been specified.  For example, if no vendors have been specified
+     * in this configuration, the defaults will be added.
+     */
+    public void fillInDefaultValues()
+    {
+        AutoJdkConfiguration defaults = defaultAutoJdkConfiguration();
+
+        if (getVendors().isEmpty())
+            getVendors().addAll(defaults.getVendors());
+        if (getExtensionExclusions().isEmpty())
+            getExtensionExclusions().addAll(defaults.getExtensionExclusions());
+        if (getJdkUpdatePolicy() == null)
+            setJdkUpdatePolicy(defaults.getJdkUpdatePolicy());
+    }
+
     public static AutoJdkConfiguration fromFile(Path file)
     throws IOException
     {
@@ -123,7 +139,9 @@ public class AutoJdkConfiguration
 
         try (InputStream is = Files.newInputStream(file))
         {
-            return JAXB.unmarshal(is, AutoJdkConfiguration.class);
+            AutoJdkConfiguration configFromFile = JAXB.unmarshal(is, AutoJdkConfiguration.class);
+            configFromFile.fillInDefaultValues();
+            return configFromFile;
         }
     }
 
