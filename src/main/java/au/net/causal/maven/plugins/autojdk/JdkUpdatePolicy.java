@@ -6,6 +6,7 @@ import jakarta.xml.bind.annotation.XmlValue;
 import javax.xml.datatype.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 
 /**
  * Configuration for the setting that controls when a check should be performed for an existing local JDK whether a new version exists.
@@ -32,6 +33,19 @@ public interface JdkUpdatePolicy
         {
             return false;
         }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj) return true;
+            return obj instanceof Never;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Never.class.hashCode();
+        }
     }
 
     /**
@@ -43,6 +57,19 @@ public interface JdkUpdatePolicy
         public boolean isUpdateCheckRequired(Instant lastCheckTime, Instant now)
         {
             return true;
+        }
+
+        @Override
+        public boolean equals(Object obj)
+        {
+            if (this == obj) return true;
+            return obj instanceof Always;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Always.class.hashCode();
         }
     }
 
@@ -108,6 +135,21 @@ public interface JdkUpdatePolicy
                 return true;
 
             return lastCheckTime.plus(getValueAsDuration()).isBefore(now);
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof EveryDuration)) return false;
+            EveryDuration that = (EveryDuration) o;
+            return Objects.equals(getValue(), that.getValue());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getValue());
         }
     }
 }

@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -142,5 +143,15 @@ class TestAutoJdkConfiguration
         assertThat(noPreviousTimeCheck).describedAs("check required for no previous time").isFalse();
     }
 
-    //TODO think about defaults when the file is present but elements are not
+    @Test
+    void fillInDefaults()
+    {
+        AutoJdkConfiguration configuration = new AutoJdkConfiguration();
+        configuration.setVendors(List.of("zulu", AutoJdkConfiguration.WILDCARD_VENDOR));
+        configuration.fillInDefaultValues();
+
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
 }

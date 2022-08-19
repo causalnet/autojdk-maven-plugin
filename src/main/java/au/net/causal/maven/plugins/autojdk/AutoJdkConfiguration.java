@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * User-global configuration for AutoJDK.
@@ -179,6 +180,21 @@ public class AutoJdkConfiguration
         public void setSubstitution(String substitution)
         {
             this.substitution = substitution;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof ExtensionExclusion)) return false;
+            ExtensionExclusion that = (ExtensionExclusion) o;
+            return Objects.equals(getVersion(), that.getVersion()) && Objects.equals(getSubstitution(), that.getSubstitution());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(getVersion(), getSubstitution());
         }
     }
 
