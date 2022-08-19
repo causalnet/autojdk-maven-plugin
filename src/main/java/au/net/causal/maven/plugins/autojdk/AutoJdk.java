@@ -150,7 +150,6 @@ public class AutoJdk
                 log.info("No matching local JDK found, searching for one available to download...");
 
             //Query remote repos and download if the local does not match
-            //TODO should we check all repos for up-to-date checks and pick the best?
             CompositeJdkArchiveRepository compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
                                                                                                   SearchErrorLoggingJdkArchiveRepository.wrapRepositories(jdkArchiveRepositories));
             try
