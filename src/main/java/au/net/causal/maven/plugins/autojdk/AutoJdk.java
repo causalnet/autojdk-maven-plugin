@@ -118,9 +118,12 @@ public class AutoJdk
     throws JdkSearchUpdateCheckException
     {
         //If not configured, do not perform check
-        //TODO need better way of doing defaults
         if (autoJdkConfiguration.getJdkUpdatePolicy() == null || autoJdkConfiguration.getJdkUpdatePolicy().getValue() == null)
+        {
+            //Should not happen if defaults are properly configured
+            log.warn("AutoJDK configuration JDK update policy not configured");
             return false;
+        }
 
         JdkUpdatePolicy checkPolicy = autoJdkConfiguration.getJdkUpdatePolicy().getValue();
 
