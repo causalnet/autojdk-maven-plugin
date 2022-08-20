@@ -2,8 +2,6 @@ package au.net.causal.maven.plugins.autojdk;
 
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
-import jakarta.xml.bind.DataBindingException;
-import jakarta.xml.bind.JAXB;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
 import org.codehaus.plexus.util.FileUtils;
@@ -34,10 +32,12 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
 
     private final Path autoJdkInstallationDirectory;
     private final JdkInstaller jdkInstaller;
+    private final AutoJdkXmlManager xmlManager;
 
-    public AutoJdkInstalledJdkSystem(Path autoJdkInstallationDirectory)
+    public AutoJdkInstalledJdkSystem(Path autoJdkInstallationDirectory, AutoJdkXmlManager xmlManager)
     {
         this.autoJdkInstallationDirectory = Objects.requireNonNull(autoJdkInstallationDirectory);
+        this.xmlManager = Objects.requireNonNull(xmlManager);
         this.jdkInstaller = new JdkInstaller(autoJdkInstallationDirectory);
     }
 
@@ -62,9 +62,9 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
         //Generate the metadata file
         try
         {
-            JAXB.marshal(metadata, jdkMetadataFile.toFile());
+            xmlManager.writeFile(metadata, jdkMetadataFile);
         }
-        catch (DataBindingException e)
+        catch (AutoJdkXmlManager.XmlWriteException e)
         {
             throw new IOException("Error writing JDK metadata file " + jdkMetadataFile + ": " + e.getMessage(), e);
         }
@@ -123,7 +123,7 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
             {
                 try
                 {
-                    LocalJdkMetadata metadata = JAXB.unmarshal(metadataXmlFile.toFile(), LocalJdkMetadata.class);
+                    LocalJdkMetadata metadata = xmlManager.parseFile(metadataXmlFile, LocalJdkMetadata.class);
                     Path jdkDirectory = metadataXmlFile.resolveSibling(FileUtils.removeExtension(metadataXmlFile.getFileName().toString()));
                     if (!Files.isDirectory(jdkDirectory))
                         log.warn("JDK directory " + jdkDirectory + " does not exist for metadata file " + metadataXmlFile);
@@ -131,7 +131,7 @@ public class AutoJdkInstalledJdkSystem implements LocalJdkResolver, JdkInstallat
                     if (releaseType == null || releaseType.equals(metadata.getReleaseType()))
                         jdks.add(new AutoJdkInstallation(jdkDirectory, metadata));
                 }
-                catch (DataBindingException e)
+                catch (AutoJdkXmlManager.XmlParseException e)
                 {
                     log.warn("Failed to read local JDK metadata file " + metadataXmlFile + ": " + e.getMessage());
                     log.debug("Failed to read local JDK metadata file " + metadataXmlFile + ": " + e.getMessage(), e);

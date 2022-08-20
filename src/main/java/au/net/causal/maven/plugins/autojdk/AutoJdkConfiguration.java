@@ -1,6 +1,5 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import jakarta.xml.bind.JAXB;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlElements;
@@ -9,8 +8,6 @@ import jakarta.xml.bind.annotation.XmlType;
 
 import javax.xml.datatype.DatatypeConstants;
 import javax.xml.datatype.DatatypeFactory;
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -131,19 +128,16 @@ public class AutoJdkConfiguration
             setJdkUpdatePolicy(defaults.getJdkUpdatePolicy());
     }
 
-    public static AutoJdkConfiguration fromFile(Path file)
-    throws IOException
+    public static AutoJdkConfiguration fromFile(Path file, AutoJdkXmlManager xmlManager)
+    throws AutoJdkXmlManager.XmlParseException
     {
         //If no config file is present just use the default settings
         if (Files.notExists(file))
             return AutoJdkConfiguration.defaultAutoJdkConfiguration();
 
-        try (InputStream is = Files.newInputStream(file))
-        {
-            AutoJdkConfiguration configFromFile = JAXB.unmarshal(is, AutoJdkConfiguration.class);
-            configFromFile.fillInDefaultValues();
-            return configFromFile;
-        }
+        AutoJdkConfiguration configFromFile = xmlManager.parseFile(file, AutoJdkConfiguration.class);
+        configFromFile.fillInDefaultValues();
+        return configFromFile;
     }
 
     @XmlType(propOrder={})

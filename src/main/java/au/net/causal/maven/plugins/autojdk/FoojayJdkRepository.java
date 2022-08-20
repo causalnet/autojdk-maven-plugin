@@ -12,7 +12,6 @@ import io.foojay.api.discoclient.pkg.MajorVersion;
 import io.foojay.api.discoclient.pkg.Pkg;
 import io.foojay.api.discoclient.pkg.Scope;
 import io.foojay.api.discoclient.util.PkgInfo;
-import jakarta.xml.bind.JAXB;
 import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
@@ -43,13 +42,16 @@ public class FoojayJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRep
 {
     private final DiscoClient discoClient;
     private final FileDownloader fileDownloader;
+    private final AutoJdkXmlManager xmlManager;
 
     public FoojayJdkRepository(DiscoClient discoClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
-                               FileDownloader fileDownloader, String mavenArtifactGroupId)
+                               FileDownloader fileDownloader, String mavenArtifactGroupId,
+                               AutoJdkXmlManager xmlManager)
     {
         super(repositorySystem, repositorySystemSession, mavenArtifactGroupId);
         this.discoClient = Objects.requireNonNull(discoClient);
         this.fileDownloader = Objects.requireNonNull(fileDownloader);
+        this.xmlManager = Objects.requireNonNull(xmlManager);
     }
 
     @Override
@@ -301,7 +303,7 @@ public class FoojayJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRep
 
                 return new JdkArchive(jdkArtifact, jdkArchiveInLocalRepo);
             }
-            catch (InstallationException | ArtifactResolutionException e)
+            catch (InstallationException | ArtifactResolutionException | AutoJdkXmlManager.XmlWriteException e)
             {
                 throw new JdkRepositoryException("Failed to install JDK archive artifact to local repo: " + e.getMessage(), e);
             }
@@ -317,9 +319,9 @@ public class FoojayJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRep
     }
 
     private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
+    throws AutoJdkXmlManager.XmlWriteException
     {
-        //TODO JAXB context caching
-        JAXB.marshal(metadata, file.toFile());
+        xmlManager.writeFile(metadata, file);
     }
 
     protected static class VersionNumberAndLatest

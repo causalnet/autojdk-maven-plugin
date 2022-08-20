@@ -2,6 +2,7 @@ package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
 import au.net.causal.maven.plugins.autojdk.ExtensionExclusionProcessor.ExclusionProcessorException;
+import jakarta.xml.bind.JAXBException;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -16,7 +17,6 @@ import org.codehaus.plexus.util.xml.Xpp3DomBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Method;
@@ -69,9 +69,10 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
             log.debug("AutoJDK config file: " + autoJdkConfigFile.toAbsolutePath());
 
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigFile);
+            AutoJdkXmlManager xmlManager = new AutoJdkXmlManager();
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigFile, xmlManager);
         }
-        catch (IOException e)
+        catch (AutoJdkXmlManager.XmlParseException | JAXBException e)
         {
             throw new MavenExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }

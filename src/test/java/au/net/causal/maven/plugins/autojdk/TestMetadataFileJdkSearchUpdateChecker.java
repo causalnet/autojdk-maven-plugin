@@ -2,6 +2,7 @@ package au.net.causal.maven.plugins.autojdk;
 
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
+import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,9 +27,10 @@ class TestMetadataFileJdkSearchUpdateChecker
 
     @BeforeEach
     void setUp(@TempDir Path tempDir)
+    throws JAXBException
     {
         metadataFile = tempDir.resolve("metadata.xml");
-        checker = new MetadataFileJdkSearchUpdateChecker(metadataFile);
+        checker = new MetadataFileJdkSearchUpdateChecker(metadataFile, new AutoJdkXmlManager());
     }
 
     @Test

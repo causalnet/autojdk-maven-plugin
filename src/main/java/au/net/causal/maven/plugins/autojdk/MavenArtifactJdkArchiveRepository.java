@@ -1,6 +1,5 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import jakarta.xml.bind.JAXB;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -11,7 +10,11 @@ import org.eclipse.aether.version.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<MavenJdkArtifact>
@@ -20,14 +23,17 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
 
     private final List<RemoteRepository> remoteRepositories;
     private final VendorService vendorService;
+    private final AutoJdkXmlManager xmlManager;
 
     public MavenArtifactJdkArchiveRepository(RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                              List<RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
-                                             VendorService vendorService)
+                                             VendorService vendorService,
+                                             AutoJdkXmlManager xmlManager)
     {
         super(repositorySystem, repositorySystemSession, mavenArtifactGroupId);
         this.remoteRepositories = List.copyOf(remoteRepositories);
         this.vendorService = Objects.requireNonNull(vendorService);
+        this.xmlManager = Objects.requireNonNull(xmlManager);
     }
 
     @Override
@@ -106,15 +112,19 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
         try
         {
             ArtifactResult metadataResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), metadataRequest);
-
-            //TODO better management of JAXB context
-            return JAXB.unmarshal(metadataResult.getArtifact().getFile(), MavenJdkArtifactMetadata.class);
+            return xmlManager.parseFile(metadataResult.getArtifact().getFile(), MavenJdkArtifactMetadata.class);
         }
         catch (ArtifactResolutionException e)
         {
             //Could not find metadata, so just ignore this search result
             //TODO probably should turn this down because it's reasonable that Maven found artifacts for different OS/architecture
             log.warn("Could not find JDK metadata for " + metadataArtifact, e);
+
+            return new MavenJdkArtifactMetadata(); //No archive types is like an empty result
+        }
+        catch (AutoJdkXmlManager.XmlParseException e)
+        {
+            log.warn("Error parsing JDK metadata for " + metadataArtifact, e);
 
             return new MavenJdkArtifactMetadata(); //No archive types is like an empty result
         }

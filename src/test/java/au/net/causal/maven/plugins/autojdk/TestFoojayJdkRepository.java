@@ -5,6 +5,7 @@ import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.versioning.VersionNumber;
 import io.foojay.api.discoclient.DiscoClient;
+import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
@@ -54,9 +55,11 @@ class TestFoojayJdkRepository extends AbstractDiscoTestCase
 
     @BeforeEach
     void setUp()
+    throws JAXBException
     {
         DiscoClient discoClient = DiscoClientSingleton.discoClient();
-        jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID);
+        AutoJdkXmlManager xmlManager = new AutoJdkXmlManager();
+        jdkRepository = new FoojayJdkRepository(discoClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID, xmlManager);
     }
 
     @Test

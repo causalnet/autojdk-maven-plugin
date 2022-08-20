@@ -1,6 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.base.StandardSystemProperty;
+import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
@@ -143,14 +144,24 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory, new MavenProxySelector(repoSession));
         fileDownloader.addDownloadProgressListener(new MavenDownloadProgressAdapter(repoSession));
 
-        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory());
+        AutoJdkXmlManager xmlManager;
+        try
+        {
+            xmlManager = new AutoJdkXmlManager();
+        }
+        catch (JAXBException e)
+        {
+            throw new MojoExecutionException("Error initializing JAXB: " + e, e);
+        }
+
+        AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory(), xmlManager);
 
         AutoJdkConfiguration autoJdkConfiguration;
         try
         {
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigurationFile.toPath());
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigurationFile.toPath(), xmlManager);
         }
-        catch (IOException e)
+        catch (AutoJdkXmlManager.XmlParseException e)
         {
             throw new MojoExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }
@@ -164,13 +175,13 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
-        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService));
+        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager));
         if (!offlineMode)
-            jdkArchiveRepositories.add(new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk"));
+            jdkArchiveRepositories.add(new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk", xmlManager));
 
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
         Clock clock = Clock.systemDefaultZone();
-        JdkSearchUpdateChecker jdkSearchUpdateChecker = new MetadataFileJdkSearchUpdateChecker(autojdkHome.getAutoJdkSearchUpToDateCheckMetadataFile());
+        JdkSearchUpdateChecker jdkSearchUpdateChecker = new MetadataFileJdkSearchUpdateChecker(autojdkHome.getAutoJdkSearchUpToDateCheckMetadataFile(), xmlManager);
 
         autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration, jdkSearchUpdateChecker, clock);
 

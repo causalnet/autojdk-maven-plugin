@@ -1,12 +1,8 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import jakarta.xml.bind.JAXB;
-
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.datatype.XMLGregorianCalendar;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -29,16 +25,19 @@ import java.util.Objects;
 public class MetadataFileJdkSearchUpdateChecker implements JdkSearchUpdateChecker
 {
     private final Path metadataFile;
+    private final AutoJdkXmlManager xmlManager;
     private final DatatypeFactory datatypeFactory = DatatypeFactory.newDefaultInstance();
 
     /**
      * Creates an update checker.
      *
      * @param metadataFile the XML metadata file to use for storing times.  Will be created if it does not exist.
+     * @param xmlManager XML manager for parsing XML files.
      */
-    public MetadataFileJdkSearchUpdateChecker(Path metadataFile)
+    public MetadataFileJdkSearchUpdateChecker(Path metadataFile, AutoJdkXmlManager xmlManager)
     {
         this.metadataFile = Objects.requireNonNull(metadataFile);
+        this.xmlManager = Objects.requireNonNull(xmlManager);
     }
 
     @Override
@@ -100,11 +99,11 @@ public class MetadataFileJdkSearchUpdateChecker implements JdkSearchUpdateChecke
             return new JdkSearchUpToDateMetadata();
 
         //Otherwise read the file and return it
-        try (InputStream is = Files.newInputStream(metadataFile))
+        try
         {
-            return JAXB.unmarshal(is, JdkSearchUpToDateMetadata.class);
+            return xmlManager.parseFile(metadataFile, JdkSearchUpToDateMetadata.class);
         }
-        catch (IOException e)
+        catch (AutoJdkXmlManager.XmlParseException e)
         {
             throw new JdkSearchUpdateCheckException(e);
         }
@@ -121,14 +120,11 @@ public class MetadataFileJdkSearchUpdateChecker implements JdkSearchUpdateChecke
 
             //Save it safely - first write to temp file then rename
             Path tempFile = Files.createTempFile(parentDir, "autojdk-search-metadata", ".xml");
-            try (OutputStream os = Files.newOutputStream(tempFile))
-            {
-                JAXB.marshal(metadata, os);
-            }
+            xmlManager.writeFile(metadata, tempFile);
 
             Files.move(tempFile, metadataFile, StandardCopyOption.REPLACE_EXISTING);
         }
-        catch (IOException e)
+        catch (IOException | AutoJdkXmlManager.XmlWriteException e)
         {
             throw new JdkSearchUpdateCheckException(e);
         }
