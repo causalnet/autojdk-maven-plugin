@@ -42,7 +42,9 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
     {
         //Cannot search without known architecture / os, so bail out if this happens
         if (searchRequest.getOperatingSystem() == null || searchRequest.getArchitecture() == null)
-            return Collections.emptyList(); //TODO a kludge until we can figure out something better
+            return Collections.emptyList(); //TODO a kludge until we can figure out something better, maybe iterate all knowns?
+
+        //TODO we shouldn't just expand all OSes and arch's - we know which ones can go together and which can't
 
         List<String> artifactIdsToSearch;
 
