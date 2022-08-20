@@ -40,11 +40,24 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
     public Collection<? extends MavenJdkArtifact> search(JdkSearchRequest searchRequest)
     throws JdkRepositoryException
     {
-        //Cannot search without known architecture / os, so bail out if this happens
-        if (searchRequest.getOperatingSystem() == null || searchRequest.getArchitecture() == null)
-            return Collections.emptyList(); //TODO a kludge until we can figure out something better, maybe iterate all knowns?
-
-        //TODO we shouldn't just expand all OSes and arch's - we know which ones can go together and which can't
+        //If os and arch is not specified, use all platforms as the search
+        List<? extends Platform> searchPlatforms;
+        if (searchRequest.getOperatingSystem() == null && searchRequest.getArchitecture() == null)
+            searchPlatforms = PlatformTools.WELL_KNOWN_PLATFORMS;
+        else if (searchRequest.getOperatingSystem() == null)
+        {
+            searchPlatforms = PlatformTools.WELL_KNOWN_PLATFORMS.stream()
+                    .filter(p -> p.getArchitecture() == searchRequest.getArchitecture())
+                    .collect(Collectors.toList());
+        }
+        else if (searchRequest.getArchitecture() == null)
+        {
+            searchPlatforms = PlatformTools.WELL_KNOWN_PLATFORMS.stream()
+                    .filter(p -> p.getOperatingSystem() == searchRequest.getOperatingSystem())
+                    .collect(Collectors.toList());
+        }
+        else
+            searchPlatforms = List.of(new Platform(searchRequest.getOperatingSystem(), searchRequest.getArchitecture()));
 
         List<String> artifactIdsToSearch;
 
@@ -80,20 +93,23 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
                 }
                 List<Version> foundVersions = versionSearchResult.getVersions();
 
-                for (Version foundVersion : foundVersions)
+                for (Platform searchPlatform : searchPlatforms)
                 {
-                    String classifier = MavenJdkArtifact.makeClassifier(searchRequest.getOperatingSystem(), searchRequest.getArchitecture());
-                    Artifact searchArtifactWithClassifier = new DefaultArtifact(searchArtifact.getGroupId(), searchArtifact.getArtifactId(), classifier, searchArtifact.getExtension(), foundVersion.toString());
-                    MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(searchArtifactWithClassifier);
-
-                    //Only include result release type (EA/GA) matches search request (if specified)
-                    if (searchRequest.getReleaseType() == null || searchRequest.getReleaseType().equals(mavenMetadata.getReleaseType()))
+                    for (Version foundVersion : foundVersions)
                     {
-                        for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
+                        String classifier = MavenJdkArtifact.makeClassifier(searchPlatform.getOperatingSystem(), searchPlatform.getArchitecture());
+                        Artifact searchArtifactWithClassifier = new DefaultArtifact(searchArtifact.getGroupId(), searchArtifact.getArtifactId(), classifier, searchArtifact.getExtension(), foundVersion.toString());
+                        MavenJdkArtifactMetadata mavenMetadata = readMavenJdkArtifactMetadata(searchArtifactWithClassifier);
+
+                        //Only include result release type (EA/GA) matches search request (if specified)
+                        if (searchRequest.getReleaseType() == null || searchRequest.getReleaseType().equals(mavenMetadata.getReleaseType()))
                         {
-                            MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(getMavenArtifactGroupId(), artifactIdToSearch, foundVersion.toString(),
-                                                                                        searchRequest.getArchitecture(), searchRequest.getOperatingSystem(), curArchiveType);
-                            matchingArtifacts.add(curMavenJdkArtifact);
+                            for (ArchiveType curArchiveType : mavenMetadata.getArchiveTypes())
+                            {
+                                MavenJdkArtifact curMavenJdkArtifact = new MavenJdkArtifact(getMavenArtifactGroupId(), artifactIdToSearch, foundVersion.toString(),
+                                        searchPlatform.getArchitecture(), searchPlatform.getOperatingSystem(), curArchiveType);
+                                matchingArtifacts.add(curMavenJdkArtifact);
+                            }
                         }
                     }
                 }
