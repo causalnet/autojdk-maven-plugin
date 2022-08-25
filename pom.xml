@@ -14,6 +14,8 @@
         <maven.version>3.8.6</maven.version>
         <java.version>11</java.version>
 
+        <jackson.version>2.13.3</jackson.version>
+
         <!-- Local repository directory used for integration testing -->
         <it.local.repo>${project.basedir}/it-local-repo</it.local.repo>
     </properties>
@@ -100,6 +102,23 @@
             <groupId>com.sun.xml.bind</groupId>
             <artifactId>jaxb-impl</artifactId>
             <version>4.0.0</version>
+        </dependency>
+
+        <!-- For OpenAPI -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>0.2.3</version>
         </dependency>
 
         <dependency>
@@ -295,6 +314,37 @@
                         <source>src/main/java/au/net/causal/maven/plugins/autojdk/AutoJdkConfiguration.java</source>
                     </sources>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>6.0.1</version>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <inputSpec>https://api.foojay.io/swagger/foojay-discoapi-3.0.yml</inputSpec>
+                            <generatorName>java</generatorName>
+                            <skipValidateSpec>true</skipValidateSpec>
+                            <library>native</library>
+                            <configOptions>
+                                <java8>true</java8>
+                                <dateLibrary>java8</dateLibrary>
+                                <hideGenerationTimestamp>true</hideGenerationTimestamp>
+                                <useBeanValidation>true</useBeanValidation>
+                            </configOptions>
+                            <generateApiTests>false</generateApiTests>
+                            <generateModelTests>false</generateModelTests>
+
+                            <apiPackage>au.net.causal.maven.plugins.autojdk.foojay.openapi</apiPackage>
+                            <modelPackage>au.net.causal.maven.plugins.autojdk.foojay.openapi.model</modelPackage>
+                            <invokerPackage>au.net.causal.maven.plugins.autojdk.foojay.openapi.handler</invokerPackage>
+                        </configuration>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
