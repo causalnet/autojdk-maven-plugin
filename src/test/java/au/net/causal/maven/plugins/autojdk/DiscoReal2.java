@@ -1,59 +1,48 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import au.net.causal.maven.plugins.autojdk.foojay.openapi.DefaultApi;
-import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
-import com.fasterxml.jackson.annotation.JsonAnyGetter;
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
+import au.net.causal.maven.plugins.autojdk.foojay.JdkPackage;
 import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.OperatingSystem;
+import eu.hansolo.jdktools.ReleaseStatus;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 class DiscoReal2
 {
+    @Disabled
     @Test
     void test()
     throws Exception
     {
-        var apiClient = new ApiClient();
-        apiClient.updateBaseUri("https://api.foojay.io");
-        var foojay = new DefaultApi(apiClient);
-        var results = foojay.getJDKPackagesV3("17", null, null, null, List.of(Architecture.X64.getApiString()), null, null, List.of(OperatingSystem.WINDOWS.getApiString()), null, null, null, null, null, null, null, true, null, null, null);
+        FoojayClient client = new FoojayClient();
 
-
-        //Convert
-        var typedResult = apiClient.getObjectMapper().convertValue(results, JdkPackagesResponse.class);
-
-        //String s = apiClient.getObjectMapper().writeValueAsString(results);
+        List<? extends JdkPackage> results = client.getJdkPackages(null, 11, null, null, List.of(Architecture.X64), null, List.of(ArchiveType.ZIP, ArchiveType.TAR_GZ), List.of(OperatingSystem.WINDOWS), null, null, List.of(ReleaseStatus.GA, ReleaseStatus.EA), null, null,
+                                                                   Latest.ALL_OF_VERSION, null, true, null, null, null);
 
 
 
-        System.out.println(results);
-    }
+        for (Iterator<? extends JdkPackage> i = results.iterator(); i.hasNext();)
+        {
+            JdkPackage p = i.next();
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class JdkPackagesResponse
-    {
-        public List<Pkg> result;
-    }
+            //Detect mismatch and filter out - is probably Graal
+            if (p.getMajorVersion() != null && p.getJdkVersion() != null && !p.getMajorVersion().equals(p.getJdkVersion()))
+            {
+                System.out.println("*** removing mismatch: " + p);
+                i.remove();
+            }
+        }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public static class Pkg
-    {
-        public String id;
-        public String distribution;
-        public String archiveType;
-        public String jdkVersion;
-        public String distributionVersion;
-
-        @JsonAnyGetter @JsonAnySetter
-        public Map<String, Object> otherProperties = new LinkedHashMap<>();
+        System.out.println();
+        for (JdkPackage result : results)
+        {
+            System.out.println(result);
+        }
     }
 }
