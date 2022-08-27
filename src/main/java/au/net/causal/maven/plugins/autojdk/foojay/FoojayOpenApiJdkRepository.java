@@ -2,42 +2,29 @@ package au.net.causal.maven.plugins.autojdk.foojay;
 
 import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
 import au.net.causal.maven.plugins.autojdk.FileDownloader;
-import au.net.causal.maven.plugins.autojdk.FoojayArtifact;
 import au.net.causal.maven.plugins.autojdk.JdkArchive;
 import au.net.causal.maven.plugins.autojdk.JdkRepositoryException;
 import au.net.causal.maven.plugins.autojdk.JdkSearchRequest;
 import au.net.causal.maven.plugins.autojdk.LocalMavenRepositoryCachedJdkArchiveRepository;
-import au.net.causal.maven.plugins.autojdk.MavenArtifactJdkArchiveRepository;
 import au.net.causal.maven.plugins.autojdk.MavenJdkArtifactMetadata;
 import au.net.causal.maven.plugins.autojdk.VersionTools;
-import au.net.causal.maven.plugins.autojdk.foojay.openapi.DefaultApi;
-import com.google.common.collect.ImmutableList;
+import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
+import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.LibCType;
-import eu.hansolo.jdktools.PackageType;
 import eu.hansolo.jdktools.ReleaseStatus;
+import eu.hansolo.jdktools.util.OutputFormat;
 import eu.hansolo.jdktools.versioning.VersionNumber;
-import io.foojay.api.discoclient.pkg.Distribution;
-import io.foojay.api.discoclient.pkg.MajorVersion;
-import io.foojay.api.discoclient.pkg.Pkg;
-import io.foojay.api.discoclient.pkg.Scope;
-import io.foojay.api.discoclient.util.PkgInfo;
 import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.installation.InstallRequest;
-import org.eclipse.aether.installation.InstallationException;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -48,7 +35,7 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<FoojayArtifact>
+public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<FoojayOpenApiArtifact>
 {
     private final FoojayClient foojayClient;
     private final FileDownloader fileDownloader;
@@ -64,29 +51,23 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
         this.xmlManager = Objects.requireNonNull(xmlManager);
     }
 
+    /**
+     * @return a list containing the specified value if it is not null, or null if the specified value is null.
+     */
+    private static <T> List<T> singleItemList(T itemOrNull)
+    {
+        if (itemOrNull == null)
+            return null;
+        else
+            return List.of(itemOrNull);
+    }
+
     @Override
-    public Collection<? extends FoojayArtifact> search(JdkSearchRequest searchRequest)
+    public Collection<? extends FoojayOpenApiArtifact> search(JdkSearchRequest searchRequest)
     throws JdkRepositoryException
     {
         List<VersionNumberAndLatest> foojaySearch = versionRangeToSearchNumbers(searchRequest.getVersionRange());
         foojaySearch.sort(Comparator.comparing(VersionNumberAndLatest::getVersionNumber).reversed()); //Start with latest version and work our way down
-
-        //If a vendor was specified, attempt to resolve
-        List<Distribution> searchDistributions;
-        if (searchRequest.getVendor() == null)
-            searchDistributions = null;
-        else
-        {
-            Distribution distribution = resolveSearchDistributionFromVendor(searchRequest.getVendor());
-
-            //If the distribution could not be found, just bail out of the search with no results
-            //Foojay API treats an unknown distribution as a wildcard and it would match everything which is not what we want
-            //when the user selects a specific vendor
-            if (distribution == null)
-                return Collections.emptyList();
-
-            searchDistributions = Collections.singletonList(distribution);
-        }
 
         List<ReleaseStatus> releaseStatuses;
         if (searchRequest.getReleaseType() == null)
@@ -105,75 +86,70 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
                     throw new Error("Unknown release type: " + searchRequest.getReleaseType());
             }
         }
-        for (VersionNumberAndLatest vlCriteria : foojaySearch)
+
+        try
         {
-            //TODO
-            /*
-            List<Pkg> searchResults = discoClient.getPkgs(
-                                                    searchDistributions,
-                                                    vlCriteria.getVersionNumber(),
-                                                    vlCriteria.getLatest(),
-                                                    searchRequest.getOperatingSystem(),
-                                                    null,
-                                                    searchRequest.getArchitecture(),
-                                                    searchRequest.getArchitecture() == null ? null : searchRequest.getArchitecture().getBitness(),
-                                                    null, // archive type we want is both .zip and .tar.gz but can't specify both with this Java API
-                                                    PackageType.JDK,
-                                                    null,
-                                                    true,
-                                                    releaseStatuses,
-                                                    null,
-                                                    null,
-                                                    ImmutableList.of(Scope.DIRECTLY_DOWNLOADABLE, Scope.BUILD_OF_OPEN_JDK, Scope.FREE_TO_USE_IN_PRODUCTION),
-                                                    null);
+            for (VersionNumberAndLatest vlCriteria : foojaySearch)
+            {
+                String versionString = vlCriteria.getVersionNumber().toString(OutputFormat.REDUCED_COMPRESSED, true, true);
+                List<? extends JdkPackage> searchResults = foojayClient.getJdkPackages(
+                        versionString,
+                        null,
+                        singleItemList(searchRequest.getVendor()),
+                        null,
+                        singleItemList(searchRequest.getArchitecture()),
+                        null,
+                        List.of(ArchiveType.ZIP, ArchiveType.TAR_GZ),
+                        singleItemList(searchRequest.getOperatingSystem()),
+                        null,
+                        null,
+                        releaseStatuses,
+                        null,
+                        null,
+                        vlCriteria.getLatest(),
+                        null,
+                        true,
+                        null,
+                        null,
+                        null);
 
-            List<FoojayArtifact> results =  searchResults.stream()
-                                                         .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
-                                                         .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem() == null ? null : searchRequest.getOperatingSystem().getLibCType()))
-                                                         //Exclude GraalVM builds, their versioning is wonky
-                                                         .filter(pkg -> !pkg.getDistribution().getScopes().contains(Scope.BUILD_OF_GRAALVM))
-                                                         .map(FoojayArtifact::new)
-                                                         .filter(artifact -> artifact.getArchiveType() != null) //Any not-understood archive type is discarded
-                                                         .collect(Collectors.toList());
+                List<FoojayOpenApiArtifact> results = searchResults.stream()
+                                                                   .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
+                                                                   .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem() == null ? null
+                                                                                                                                                     : searchRequest.getOperatingSystem()
+                                                                                                                                                                    .getLibCType()))
+                                                                   //Exclude GraalVM builds, their versioning is wonky
+                                                                   .filter(pkg -> !isGraalMismatchedVersioning(pkg))
+                                                                   .map(FoojayOpenApiArtifact::new)
+                                                                   .filter(artifact -> artifact.getArchiveType() != null) //Any not-understood archive type is discarded
+                                                                   .collect(Collectors.toList());
 
-            //If we have at least one result after filtering, use that
-            //Otherwise go to the next iteration / search number which might get more results
-            if (!results.isEmpty())
-                return results;
-            */
+                //If we have at least one result after filtering, use that
+                //Otherwise go to the next iteration / search number which might get more results
+                if (!results.isEmpty())
+                    return results;
+            }
+
+            //If we get here no searches found anything
+            return Collections.emptyList();
         }
-
-        //If we get here no searches found anything
-        return Collections.emptyList();
+        catch (ApiException e)
+        {
+            throw new JdkRepositoryException(e);
+        }
     }
 
-    /**
-     * Given a vendor, return the matching distribution or returns null if none was found.
-     *
-     * @param vendor the vendor to resolve.
-     *
-     * @return a known distribution, or null.
-     */
-    private Distribution resolveSearchDistributionFromVendor(String vendor)
+    private boolean isGraalMismatchedVersioning(JdkPackage p)
     {
-        //Do not use DiscoClient.getDistributionFromText() since it only uses classpath resource
-        //and we want to match onto live up-to-date remote data
-        //TODO
-        /*
-        return discoClient.getDistributions()
-                          .stream()
-                          .filter(distribution -> distribution.getFromText(vendor) != null)
-                          .findFirst()
-                          .orElse(null);
-         */
-
-        return null;
+        //GraalVM JDK versioning is just broken sometimes.
+        //Sometimes the major version and the JDK version do not match - so detect this
+        return p.getMajorVersion() != null && p.getJdkVersion() != null && !p.getMajorVersion().equals(p.getJdkVersion());
     }
 
-    private boolean pkgMatchesVersionRange(Pkg pkg, VersionRange searchVersionRange)
+    private boolean pkgMatchesVersionRange(JdkPackage pkg, VersionRange searchVersionRange)
     {
-        FoojayArtifact artifactForPackage = new FoojayArtifact(pkg);
-        String javaVersionString = artifactForPackage.getVersion().toString(); //Version number translation happens in FoojayArtifact
+        FoojayOpenApiArtifact artifactForPackage = new FoojayOpenApiArtifact(pkg);
+        String javaVersionString = artifactForPackage.getVersion().toString(); //Version number translation happens in FoojayOpenApiArtifact
         return RequirementMatcherFactory.createVersionMatcher(javaVersionString).matches(searchVersionRange.toString());
     }
 
@@ -181,7 +157,7 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
      * Noticed that sometimes search results contain libc's that don't match the operating system's.  a JDK using musl on Ubuntu which is glibc won't run so
      * these results need to be filtered out.
      */
-    private boolean pkgMatchesLibCType(Pkg pkg, LibCType requiredLibCType)
+    private boolean pkgMatchesLibCType(JdkPackage pkg, LibCType requiredLibCType)
     {
         //If there is no libc type just assume match since we can't check
         if (requiredLibCType == null || pkg.getLibCType() == null)
@@ -196,8 +172,11 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
      * @param versionRange version range to convert.
      *
      * @return a list of version numbers that can be searched for.  Null elements may be returned (which in Foojay means no restriction by version number).
+     *
+     * @throws JdkRepositoryException if an error occurs.
      */
     protected List<VersionNumberAndLatest> versionRangeToSearchNumbers(VersionRange versionRange)
+    throws JdkRepositoryException
     {
         //Recommended version is just a version number and no restrictions, e.g. "17.0.2"
         //If there is a recommended version and not a range in the range, use that
@@ -247,23 +226,36 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
             highestBound = upperBounds.get(upperBounds.size() - 1);
 
         //Now expand for all major versions above what we started with
-        List<MajorVersion> availableMajorVersions = null; //new ArrayList<>(discoClient.getAllMajorVersions()); //TODO
-        availableMajorVersions.sort(Comparator.comparing(MajorVersion::getAsInt));
+        List<? extends MajorVersion> availableMajorVersions = readMajorVersions();
+        availableMajorVersions.sort(Comparator.comparing(MajorVersion::getMajorVersion));
         for (MajorVersion majorVersion : availableMajorVersions)
         {
-            if (lowestBound == null || lowestBound.isSmallerOrEqualThan(majorVersion.getVersionNumber()))
+            if (lowestBound == null || lowestBound.isSmallerOrEqualThan(new VersionNumber(majorVersion.getMajorVersion())))
             {
                 //If upper is not unbounded, trim off everything greater than the highest upper bound
-                if (highestBound == null || highestBound.isLargerOrEqualThan(majorVersion.getVersionNumber()))
-                    searchNumberCriteria.add(new VersionNumberAndLatest(majorVersion.getVersionNumber(), Latest.ALL_OF_VERSION));
+                if (highestBound == null || highestBound.isLargerOrEqualThan(new VersionNumber(majorVersion.getMajorVersion())))
+                    searchNumberCriteria.add(new VersionNumberAndLatest(new VersionNumber(majorVersion.getMajorVersion()), Latest.ALL_OF_VERSION));
             }
         }
 
         return searchNumberCriteria;
     }
 
+    private List<? extends MajorVersion> readMajorVersions()
+    throws JdkRepositoryException
+    {
+        try
+        {
+            return foojayClient.getAllMajorVersions(null, null, null, false, null, null, null);
+        }
+        catch (ApiException e)
+        {
+            throw new JdkRepositoryException("Error reading major versions: " + e, e);
+        }
+    }
+
     @Override
-    public JdkArchive resolveArchive(FoojayArtifact jdkArtifact)
+    public JdkArchive resolveArchive(FoojayOpenApiArtifact jdkArtifact)
     throws JdkRepositoryException
     {
         //First check if we don't already have a cached version in the local repo

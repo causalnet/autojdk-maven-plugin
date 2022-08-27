@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk.foojay;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.DefaultApi;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import eu.hansolo.jdktools.Api;
 import eu.hansolo.jdktools.Architecture;
@@ -38,6 +39,12 @@ public class FoojayClient
         this(createDefaultApiClient());
     }
 
+    //TODO for testing
+    public DefaultApi getApi()
+    {
+        return api;
+    }
+
     private static ApiClient createDefaultApiClient()
     {
         ApiClient apiClient = new ApiClient();
@@ -46,11 +53,34 @@ public class FoojayClient
                 .addDeserializer(Architecture.class, new ApiEnumDeserializer<>(Architecture::fromText))
                 .addDeserializer(ArchiveType.class, new ApiEnumDeserializer<>(ArchiveType::fromText))
                 .addDeserializer(ReleaseStatus.class, new ApiEnumDeserializer<>(ReleaseStatus::fromText))
-        ));
-        //apiClient.setObjectMapper(apiClient.getObjectMapper().registerModule(new SimpleModule().addDeserializer(Enum.class, new ApiEnumDeserializer())));
+                .addDeserializer(LibCType.class, new ApiEnumDeserializer<>(LibCType::fromText))
+        )
+               .configure(JsonParser.Feature.ALLOW_TRAILING_COMMA, true)); //TODO how to do this in non-deprecated way???
+
         apiClient.updateBaseUri("https://api.foojay.io");
 
         return apiClient;
+    }
+
+    public List<? extends MajorVersion> getAllMajorVersions(
+            Boolean ea,
+            Boolean ga,
+            Boolean maintained,
+            Boolean includeBuild,
+            List<String> discoveryScopeId,
+            String match,
+            Boolean includeVersions
+    )
+    throws ApiException
+    {
+        Object rawResponse = api.getAllMajorVersionsV3(ea, ga, maintained, includeBuild, discoveryScopeId, match, includeVersions);
+
+        MajorVersionsResponse typedResponse = apiClient.getObjectMapper().convertValue(rawResponse, MajorVersionsResponse.class);
+
+        if (typedResponse.getResult() == null)
+            return List.of();
+        else
+            return typedResponse.getResult();
     }
 
     public List<? extends JdkPackage> getJdkPackages(

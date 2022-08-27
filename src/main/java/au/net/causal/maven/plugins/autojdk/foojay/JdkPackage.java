@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import eu.hansolo.jdktools.Api;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
+import eu.hansolo.jdktools.LibCType;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.ReleaseStatus;
 
@@ -30,6 +31,7 @@ public class JdkPackage
     private Links links;
     private Integer majorVersion;
     private Integer jdkVersion;
+    private LibCType libCType;
 
     @JsonAnyGetter
     @JsonAnySetter
@@ -135,6 +137,16 @@ public class JdkPackage
         this.jdkVersion = jdkVersion;
     }
 
+    public LibCType getLibCType()
+    {
+        return libCType;
+    }
+
+    public void setLibCType(LibCType libCType)
+    {
+        this.libCType = libCType;
+    }
+
     //Useful for debugging
     public Map<String, Object> getOtherProperties()
     {
@@ -154,6 +166,7 @@ public class JdkPackage
                 .add("operatingSystem=" + apiString(operatingSystem) )
                 .add("archiveType=" + apiString(archiveType))
                 .add("releaseStatus=" + apiString(releaseStatus))
+                .add("libCType=" + apiString(libCType))
                 .add("links=" + links)
                 .add("otherProperties=" + otherProperties)
                 .toString();

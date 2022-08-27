@@ -19,7 +19,7 @@ import java.util.stream.Stream;
 
 public class ApiEnumDeserializer<E extends Enum<E> & Api> extends StdDeserializer<E> implements ContextualDeserializer
 {
-    private Function<String, E> fromTextFunction;
+    private final Function<String, E> fromTextFunction;
 
     private final BeanProperty property;
     private final Class<E> enumType;
