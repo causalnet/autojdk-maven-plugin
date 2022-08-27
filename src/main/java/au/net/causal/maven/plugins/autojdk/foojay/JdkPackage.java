@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk.foojay;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import eu.hansolo.jdktools.Api;
@@ -31,7 +32,7 @@ public class JdkPackage
     private Links links;
     private Integer majorVersion;
     private Integer jdkVersion;
-    private LibCType libCType;
+    private @JsonProperty("lib_c_type") LibCType libCType;
 
     @JsonAnyGetter
     @JsonAnySetter
