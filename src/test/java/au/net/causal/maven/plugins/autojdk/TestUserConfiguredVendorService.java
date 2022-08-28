@@ -20,6 +20,7 @@ class TestUserConfiguredVendorService
 
     @Test
     void allVendors()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
@@ -36,6 +37,7 @@ class TestUserConfiguredVendorService
 
     @Test
     void somePreferred()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
@@ -59,6 +61,7 @@ class TestUserConfiguredVendorService
 
     @Test
     void extraVendorsNotInDisco()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
@@ -83,6 +86,7 @@ class TestUserConfiguredVendorService
 
     @Test
     void noWildcard()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
@@ -103,6 +107,7 @@ class TestUserConfiguredVendorService
      */
     @Test
     void multipleWildcards()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 "zulu",
@@ -129,6 +134,7 @@ class TestUserConfiguredVendorService
      */
     @Test
     void wildcardNotAtEnd()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(
                 AutoJdkConfiguration.WILDCARD_VENDOR,
@@ -154,6 +160,7 @@ class TestUserConfiguredVendorService
      */
     @Test
     void ensureAllDefaultVendorsAreRealVendors()
+    throws VendorServiceException
     {
         AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);

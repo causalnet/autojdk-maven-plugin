@@ -65,10 +65,17 @@ public class MavenArtifactJdkArchiveRepository extends LocalMavenRepositoryCache
         if (searchRequest.getVendor() == null)
         {
             //If not, need to search all known vendors
-            artifactIdsToSearch = vendorService.getAllVendors()
-                                               .stream()
-                                               .map(MavenJdkArtifact::vendorToArtifactId)
-                                               .collect(Collectors.toUnmodifiableList());
+            try
+            {
+                artifactIdsToSearch = vendorService.getAllVendors()
+                                                   .stream()
+                                                   .map(MavenJdkArtifact::vendorToArtifactId)
+                                                   .collect(Collectors.toUnmodifiableList());
+            }
+            catch (VendorServiceException e)
+            {
+                throw new JdkRepositoryException("Error retrieving vendor list: " + e.getMessage(), e);
+            }
         }
         else
             artifactIdsToSearch = Collections.singletonList(MavenJdkArtifact.vendorToArtifactId(searchRequest.getVendor()));

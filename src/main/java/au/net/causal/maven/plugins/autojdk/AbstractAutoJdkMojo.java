@@ -2,6 +2,7 @@ package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
+import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiVendorService;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -169,21 +170,21 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         }
         configureAutoJdkUpdatePolicy(autoJdkConfiguration);
 
+        FoojayClient foojayClient = null;
+        if (!offlineMode)
+            foojayClient = new FoojayClient();
+
         VendorService allVendorService;
         if (offlineMode)
             allVendorService = new OfflineFoojayVendorService();
         else
-            allVendorService = new DiscoClientVendorService(DiscoClientSingleton.discoClient());
+            allVendorService = new FoojayOpenApiVendorService(foojayClient);
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
         jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager));
         if (!offlineMode)
-        {
-            FoojayClient foojayClient = new FoojayClient();
             jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk", xmlManager));
-            //jdkArchiveRepositories.add(new FoojayJdkRepository(DiscoClientSingleton.discoClient(), repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk", xmlManager));
-        }
 
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
         Clock clock = Clock.systemDefaultZone();

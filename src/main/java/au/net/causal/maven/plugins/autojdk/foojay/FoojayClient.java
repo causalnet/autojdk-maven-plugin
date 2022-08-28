@@ -5,6 +5,7 @@ import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Api;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
@@ -39,8 +40,8 @@ public class FoojayClient
         this(createDefaultApiClient());
     }
 
-    //TODO for testing
-    public DefaultApi getApi()
+    @VisibleForTesting
+    DefaultApi getApi()
     {
         return api;
     }
@@ -60,6 +61,23 @@ public class FoojayClient
         apiClient.updateBaseUri("https://api.foojay.io");
 
         return apiClient;
+    }
+
+    public List<? extends JdkDistribution> getDistributions(
+            Boolean includeVersions,
+            Boolean includeSynonyms,
+            List<String> discoveryScopeId
+    )
+    throws ApiException
+    {
+        Object rawResponse = api.getDistributionsV3(includeVersions, includeSynonyms, discoveryScopeId);
+
+        JdkDistributionsResponse typedResponse = apiClient.getObjectMapper().convertValue(rawResponse, JdkDistributionsResponse.class);
+
+        if (typedResponse.getResult() == null)
+            return List.of();
+        else
+            return typedResponse.getResult();
     }
 
     public List<? extends MajorVersion> getAllMajorVersions(

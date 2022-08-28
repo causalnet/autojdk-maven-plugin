@@ -16,6 +16,7 @@ class TestOfflineFoojayVendorService
 
     @Test
     void readAllVendors()
+    throws VendorServiceException
     {
         List<String> vendors = vendorService.getAllVendors();
 

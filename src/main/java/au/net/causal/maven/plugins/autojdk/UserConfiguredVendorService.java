@@ -23,6 +23,7 @@ public class UserConfiguredVendorService implements VendorService
      */
     @Override
     public List<String> getAllVendors()
+    throws VendorServiceException
     {
         List<String> vendors = new ArrayList<>(autoJdkConfiguration.getVendors());
 

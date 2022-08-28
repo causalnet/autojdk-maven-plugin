@@ -12,6 +12,7 @@ public class OfflineFoojayVendorService implements VendorService
 {
     @Override
     public List<String> getAllVendors()
+    throws VendorServiceException
     {
         try
         {
@@ -20,9 +21,7 @@ public class OfflineFoojayVendorService implements VendorService
         }
         catch (InterruptedException | ExecutionException e)
         {
-            //Foojay catches all checked exceptions so only
-
-            throw new RuntimeException(e);
+            throw new VendorServiceException(e);
         }
     }
 }

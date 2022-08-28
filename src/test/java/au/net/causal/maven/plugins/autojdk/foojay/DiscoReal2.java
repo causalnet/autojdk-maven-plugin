@@ -1,8 +1,5 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.foojay;
 
-import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
-import au.net.causal.maven.plugins.autojdk.foojay.JdkPackage;
-import au.net.causal.maven.plugins.autojdk.foojay.MajorVersion;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.ArchiveType;
 import eu.hansolo.jdktools.Latest;
@@ -55,6 +52,18 @@ class DiscoReal2
         FoojayClient client = new FoojayClient();
 
         List<? extends MajorVersion> result = client.getAllMajorVersions(null, null, null, null, null, null, false);
+
+        System.out.println(result);
+    }
+
+    @Disabled
+    @Test
+    void test3()
+    throws Exception
+    {
+        FoojayClient client = new FoojayClient();
+
+        List<? extends JdkDistribution> result = client.getDistributions(false, false, null);
 
         System.out.println(result);
     }
