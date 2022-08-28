@@ -6,6 +6,7 @@ import au.net.causal.maven.plugins.autojdk.JdkArchive;
 import au.net.causal.maven.plugins.autojdk.JdkRepositoryException;
 import au.net.causal.maven.plugins.autojdk.JdkSearchRequest;
 import au.net.causal.maven.plugins.autojdk.LocalMavenRepositoryCachedJdkArchiveRepository;
+import au.net.causal.maven.plugins.autojdk.MavenArtifactJdkArchiveRepository;
 import au.net.causal.maven.plugins.autojdk.MavenJdkArtifactMetadata;
 import au.net.causal.maven.plugins.autojdk.VersionTools;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
@@ -21,10 +22,16 @@ import org.apache.maven.toolchain.RequirementMatcherFactory;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.installation.InstallRequest;
+import org.eclipse.aether.installation.InstallationException;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -273,18 +280,16 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
             //Not found in local repo, that's fine, move on to downloading it
         }
 
-        throw new Error("not implemented yet"); //TODO
-
         //If we get here, could not find in the local repo so download it and save to local repo
-        /*
-        PkgInfo pkgInfo = discoClient.getPkgInfoByPkgId(jdkArtifact.getFoojayPkg().getId(), jdkArtifact.getFoojayPkg().getJavaVersion());
-        if (pkgInfo == null || pkgInfo.getDirectDownloadUri() == null) //Not found
-            throw new JdkRepositoryException("Download information not found for Foojay package " + jdkArtifact.getFoojayPkg().getId() + ":" + jdkArtifact.getFoojayPkg().getJavaVersion());
+        if (jdkArtifact.getJdkPackage().getLinks() == null || jdkArtifact.getJdkPackage().getLinks().getPkgDownloadRedirect() == null)
+            throw new JdkRepositoryException("Download information not found for Foojay package " + jdkArtifact.getJdkPackage().getId() + ":" + jdkArtifact.getJdkPackage().getJavaVersion());
+
+        URI downloadUri = jdkArtifact.getJdkPackage().getLinks().getPkgDownloadRedirect();
 
         //Download into local repository
 
         //First download to temp file
-        try (FileDownloader.Download download = fileDownloader.downloadFile(new URL(pkgInfo.getDirectDownloadUri())))
+        try (FileDownloader.Download download = fileDownloader.downloadFile(downloadUri.toURL()))
         {
             //Once file is downloaded, install to local repo
             Path downloadedFile = download.getFile();
@@ -323,13 +328,12 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
         }
         catch (MalformedURLException e)
         {
-            throw new JdkRepositoryException("Invalid JDK download URL: " + pkgInfo.getDirectDownloadUri() + " - " + e, e);
+            throw new JdkRepositoryException("Invalid JDK download URL: " + downloadUri + " - " + e, e);
         }
         catch (IOException e)
         {
             throw new JdkRepositoryException("Failed to download JDK: " + e.getMessage(), e);
         }
-         */
     }
 
     private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
