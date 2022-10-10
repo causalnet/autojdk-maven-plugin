@@ -238,7 +238,7 @@
                     </scriptVariables>
                 </configuration>
                 <dependencies>
-                    <!-- Override with our own Groovy version for compatiblity with more modern JDKs -->
+                    <!-- Override with our own Groovy version for compatibility with more modern JDKs -->
                     <dependency>
                         <groupId>org.codehaus.groovy</groupId>
                         <artifactId>groovy</artifactId>
