@@ -65,6 +65,14 @@ class DiscoReal2
 
         List<? extends JdkDistribution> result = client.getDistributions(false, false, null);
 
-        System.out.println(result);
+        for (JdkDistribution r : result)
+        {
+            System.out.println(r);
+        }
+
+        //Wipe out extra properties
+        result.forEach(it -> it.getOtherProperties().clear());
+
+        System.out.println(client.getApiClient().getObjectMapper().writeValueAsString(result));
     }
 }

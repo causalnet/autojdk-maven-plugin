@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,7 @@ class TestUserConfiguredVendorService
     /**
      * Vendor service that retrieves all known vendors.  The user configured vendor service wrapper performs ordering and filtering which is what we are testing.
      */
-    private final VendorService sourceVendorService = new OfflineFoojayVendorService();
+    private final VendorService sourceVendorService = new OfflineDistributionsVendorService();
 
     @Test
     void allVendors()

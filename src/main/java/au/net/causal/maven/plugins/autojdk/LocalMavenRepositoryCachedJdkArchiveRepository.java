@@ -16,7 +16,7 @@ import java.util.Objects;
 
 public abstract class LocalMavenRepositoryCachedJdkArchiveRepository<A extends JdkArtifact> implements JdkArchiveRepository<A>
 {
-    protected static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
+    public static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
 
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;

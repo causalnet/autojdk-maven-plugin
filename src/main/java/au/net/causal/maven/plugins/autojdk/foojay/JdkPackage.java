@@ -33,8 +33,8 @@ public class JdkPackage
     private Integer majorVersion;
     private Integer jdkVersion;
     private @JsonProperty("lib_c_type") LibCType libCType;
+    private Boolean javafxBundled;
 
-    @JsonAnyGetter
     @JsonAnySetter
     private final Map<String, Object> otherProperties = new LinkedHashMap<>();
 
@@ -148,7 +148,18 @@ public class JdkPackage
         this.libCType = libCType;
     }
 
+    public Boolean getJavafxBundled()
+    {
+        return javafxBundled;
+    }
+
+    public void setJavafxBundled(Boolean javafxBundled)
+    {
+        this.javafxBundled = javafxBundled;
+    }
+
     //Useful for debugging
+    @JsonAnyGetter
     public Map<String, Object> getOtherProperties()
     {
         return otherProperties;
@@ -169,6 +180,7 @@ public class JdkPackage
                 .add("releaseStatus=" + apiString(releaseStatus))
                 .add("libCType=" + apiString(libCType))
                 .add("links=" + links)
+                .add("javafxBundled=" + javafxBundled)
                 .add("otherProperties=" + otherProperties)
                 .toString();
     }

@@ -1,0 +1,88 @@
+[ {
+  "name" : "ZuluPrime",
+  "api_parameter" : "zulu_prime"
+}, {
+  "name" : "Zulu",
+  "api_parameter" : "zulu"
+}, {
+  "name" : "Trava",
+  "api_parameter" : "trava"
+}, {
+  "name" : "Temurin",
+  "api_parameter" : "temurin"
+}, {
+  "name" : "Semeru certified",
+  "api_parameter" : "semeru_certified"
+}, {
+  "name" : "Semeru",
+  "api_parameter" : "semeru"
+}, {
+  "name" : "SAP Machine",
+  "api_parameter" : "sap_machine"
+}, {
+  "name" : "Red Hat",
+  "api_parameter" : "redhat"
+}, {
+  "name" : "Oracle OpenJDK",
+  "api_parameter" : "oracle_open_jdk"
+}, {
+  "name" : "Oracle",
+  "api_parameter" : "oracle"
+}, {
+  "name" : "OpenLogic",
+  "api_parameter" : "openlogic"
+}, {
+  "name" : "OJDKBuild",
+  "api_parameter" : "ojdk_build"
+}, {
+  "name" : "Microsoft",
+  "api_parameter" : "microsoft"
+}, {
+  "name" : "Mandrel",
+  "api_parameter" : "mandrel"
+}, {
+  "name" : "Liberica Native",
+  "api_parameter" : "liberica_native"
+}, {
+  "name" : "Liberica",
+  "api_parameter" : "liberica"
+}, {
+  "name" : "Kona",
+  "api_parameter" : "kona"
+}, {
+  "name" : "JetBrains",
+  "api_parameter" : "jetbrains"
+}, {
+  "name" : "Graal VM CE 8",
+  "api_parameter" : "graalvm_ce8"
+}, {
+  "name" : "Graal VM CE 17",
+  "api_parameter" : "graalvm_ce17"
+}, {
+  "name" : "Graal VM CE 16",
+  "api_parameter" : "graalvm_ce16"
+}, {
+  "name" : "Graal VM CE 11",
+  "api_parameter" : "graalvm_ce11"
+}, {
+  "name" : "Gluon GraalVM",
+  "api_parameter" : "gluon_graalvm"
+}, {
+  "name" : "Dragonwell",
+  "api_parameter" : "dragonwell"
+}, {
+  "name" : "Debian",
+  "api_parameter" : "debian"
+}, {
+  "name" : "Corretto",
+  "api_parameter" : "corretto"
+}, {
+  "name" : "Bi Sheng",
+  "api_parameter" : "bisheng"
+}, {
+  "name" : "AOJ OpenJ9",
+  "api_parameter" : "aoj_openj9"
+}, {
+  "name" : "AOJ",
+  "api_parameter" : "aoj"
+} ]

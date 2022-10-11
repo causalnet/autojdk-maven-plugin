@@ -37,8 +37,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
@@ -69,6 +71,25 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
             return List.of(itemOrNull);
     }
 
+    private Set<String> vendorSynonyms(String vendorName)
+    throws ApiException
+    {
+        if (vendorName == null)
+            return null;
+
+        Set<String> vendorAllowSet = new HashSet<>();
+        List<? extends JdkDistribution> distributions = foojayClient.getDistributions(false, true, null);
+        for (JdkDistribution distribution : distributions)
+        {
+            if (vendorName.equals(distribution.getApiParameter()) || distribution.getSynonyms().contains(vendorName))
+            {
+                vendorAllowSet.add(distribution.getApiParameter());
+                vendorAllowSet.addAll(distribution.getSynonyms());
+            }
+        }
+        return vendorAllowSet;
+    }
+
     @Override
     public Collection<? extends FoojayOpenApiArtifact> search(JdkSearchRequest searchRequest)
     throws JdkRepositoryException
@@ -96,6 +117,9 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
 
         try
         {
+            //If there is a vendor restriction in the search, need to grab them and their synonyms
+            Set<String> vendorAndSynonyms = vendorSynonyms(searchRequest.getVendor());
+
             for (VersionNumberAndLatest vlCriteria : foojaySearch)
             {
                 String versionString = vlCriteria.getVersionNumber().toString(OutputFormat.REDUCED_COMPRESSED, true, true);
@@ -103,7 +127,7 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
                         versionString,
                         null,
                         singleItemList(searchRequest.getVendor()),
-                        null,
+                        singleItemList(searchRequest.getVendor()),
                         singleItemList(searchRequest.getArchitecture()),
                         null,
                         List.of(ArchiveType.ZIP, ArchiveType.TAR_GZ),
@@ -121,6 +145,8 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
                         null);
 
                 List<FoojayOpenApiArtifact> results = searchResults.stream()
+                                                                   //Unknown vendor/distribution turn into wildcard search for some strange reason so also filter client-side just in case
+                                                                   .filter(pkg -> vendorAndSynonyms == null || vendorAndSynonyms.contains(pkg.getDistribution()))
                                                                    .filter(pkg -> pkgMatchesVersionRange(pkg, searchRequest.getVersionRange()))
                                                                    .filter(pkg -> pkgMatchesLibCType(pkg, searchRequest.getOperatingSystem() == null ? null
                                                                                                                                                      : searchRequest.getOperatingSystem()

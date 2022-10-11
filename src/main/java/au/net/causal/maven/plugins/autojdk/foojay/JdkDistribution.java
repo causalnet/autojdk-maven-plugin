@@ -6,7 +6,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
@@ -16,8 +18,8 @@ public class JdkDistribution
 {
     private String name;
     private String apiParameter;
+    private final List<String> synonyms = new ArrayList<>();
 
-    @JsonAnyGetter
     @JsonAnySetter
     private final Map<String, Object> otherProperties = new LinkedHashMap<>();
 
@@ -41,6 +43,18 @@ public class JdkDistribution
         this.apiParameter = apiParameter;
     }
 
+    public List<String> getSynonyms()
+    {
+        return synonyms;
+    }
+
+    public void setSynonyms(List<String> synonyms)
+    {
+        this.synonyms.clear();
+        this.synonyms.addAll(synonyms);
+    }
+
+    @JsonAnyGetter
     public Map<String, Object> getOtherProperties()
     {
         return otherProperties;
@@ -52,6 +66,7 @@ public class JdkDistribution
         return new StringJoiner(", ", JdkDistribution.class.getSimpleName() + "[", "]")
                 .add("name='" + name + "'")
                 .add("apiParameter='" + apiParameter + "'")
+                .add("synonyms=" + synonyms)
                 .add("otherProperties=" + otherProperties)
                 .toString();
     }

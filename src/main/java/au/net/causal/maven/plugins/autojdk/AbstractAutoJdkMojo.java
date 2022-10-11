@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiVendorService;
+import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -176,7 +177,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         VendorService allVendorService;
         if (offlineMode)
-            allVendorService = new OfflineFoojayVendorService();
+            allVendorService = new OfflineDistributionsVendorService();
         else
             allVendorService = new FoojayOpenApiVendorService(foojayClient);
 

@@ -21,7 +21,6 @@ public class MajorVersion
     private Boolean earlyAccessOnly;
     private ReleaseStatus releaseStatus;
 
-    @JsonAnyGetter
     @JsonAnySetter
     private final Map<String, Object> otherProperties = new LinkedHashMap<>();
 
@@ -65,6 +64,7 @@ public class MajorVersion
         this.releaseStatus = releaseStatus;
     }
 
+    @JsonAnyGetter
     public Map<String, Object> getOtherProperties()
     {
         return otherProperties;

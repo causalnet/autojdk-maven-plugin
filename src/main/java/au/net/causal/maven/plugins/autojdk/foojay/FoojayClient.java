@@ -46,6 +46,12 @@ public class FoojayClient
         return api;
     }
 
+    @VisibleForTesting
+    ApiClient getApiClient()
+    {
+        return apiClient;
+    }
+
     private static ApiClient createDefaultApiClient()
     {
         ApiClient apiClient = new ApiClient();
