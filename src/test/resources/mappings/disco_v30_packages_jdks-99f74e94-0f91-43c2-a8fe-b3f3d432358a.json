@@ -1,0 +1,19 @@
+{
+  "id" : "99f74e94-0f91-43c2-a8fe-b3f3d432358a",
+  "name" : "disco_v30_packages_jdks",
+  "request" : {
+    "url" : "/disco/v3.0/packages/jdks?version=17&distro=zulu&distribution=zulu&architecture=amd64&archive_type=zip&archive_type=tar.gz&operating_system=windows&release_status=ga&latest=all_of_version&free_to_use_in_production=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_packages_jdks-99f74e94-0f91-43c2-a8fe-b3f3d432358a.json",
+    "headers" : {
+      "Date" : "Wed, 12 Oct 2022 06:08:27 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "99f74e94-0f91-43c2-a8fe-b3f3d432358a",
+  "persistent" : true,
+  "insertionIndex" : 161
+}

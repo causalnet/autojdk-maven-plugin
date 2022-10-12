@@ -1,0 +1,19 @@
+{
+  "id" : "327aa3fc-97a6-4ccb-86bc-271d251d3347",
+  "name" : "disco_v30_packages_jdks",
+  "request" : {
+    "url" : "/disco/v3.0/packages/jdks?version=7&architecture=amd64&archive_type=zip&archive_type=tar.gz&operating_system=windows&release_status=ga&latest=all_of_version&free_to_use_in_production=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_packages_jdks-327aa3fc-97a6-4ccb-86bc-271d251d3347.json",
+    "headers" : {
+      "Date" : "Wed, 12 Oct 2022 06:08:39 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "327aa3fc-97a6-4ccb-86bc-271d251d3347",
+  "persistent" : true,
+  "insertionIndex" : 310
+}

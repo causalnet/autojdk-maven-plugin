@@ -1,0 +1,19 @@
+{
+  "id" : "bae53e5d-4512-4139-835e-573f59ca8a27",
+  "name" : "disco_v30_packages_jdks",
+  "request" : {
+    "url" : "/disco/v3.0/packages/jdks?version=17&distro=zulucore&distribution=zulucore&architecture=amd64&archive_type=zip&archive_type=tar.gz&operating_system=windows&release_status=ga&latest=all_of_version&free_to_use_in_production=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v30_packages_jdks-bae53e5d-4512-4139-835e-573f59ca8a27.json",
+    "headers" : {
+      "Date" : "Wed, 12 Oct 2022 06:08:32 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "bae53e5d-4512-4139-835e-573f59ca8a27",
+  "persistent" : true,
+  "insertionIndex" : 214
+}
