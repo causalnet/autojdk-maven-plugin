@@ -39,9 +39,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-//TODO read requests from file instead of network with wiremock
 @ExtendWith(MockitoExtension.class)
-class TestFoojayOpenApiJdkRepository
+class TestFoojayOpenApiJdkRepository extends AbstractApiClientMockTestCase
 {
     private static final Logger log = LoggerFactory.getLogger(TestFoojayOpenApiJdkRepository.class);
 
@@ -63,7 +62,7 @@ class TestFoojayOpenApiJdkRepository
     throws JAXBException
     {
         AutoJdkXmlManager xmlManager = new AutoJdkXmlManager();
-        FoojayClient foojayClient = new FoojayClient();
+        FoojayClient foojayClient = new FoojayClient(apiClient);
         jdkRepository = new FoojayOpenApiJdkRepository(foojayClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID, xmlManager);
     }
 
