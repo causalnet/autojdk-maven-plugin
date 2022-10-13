@@ -52,7 +52,7 @@ public class FoojayClient
         return apiClient;
     }
 
-    private static ApiClient createDefaultApiClient()
+    public static ApiClient createDefaultApiClient()
     {
         ApiClient apiClient = new ApiClient();
         apiClient.setObjectMapper(apiClient.getObjectMapper().registerModule(new SimpleModule()

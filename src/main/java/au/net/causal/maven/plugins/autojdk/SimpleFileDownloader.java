@@ -3,6 +3,10 @@ package au.net.causal.maven.plugins.autojdk;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.commons.io.IOUtils;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,6 +20,9 @@ import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -110,6 +117,44 @@ public class SimpleFileDownloader implements FileDownloader
             Authenticator proxyAuthenticator = getProxySelector().proxyAuthenticator(url);
             if (proxyAuthenticator != null && con instanceof HttpURLConnection)
                 ((HttpURLConnection)con).setAuthenticator(proxyAuthenticator);
+
+            System.err.println("Warning: hack that accepts all SSL in SimpleFileDownloader");
+            if (con instanceof HttpsURLConnection)
+            {
+                ((HttpsURLConnection)con).setHostnameVerifier((hostname, session) ->
+                                                              {
+                                                                  //TODO avoid
+                                                                  return true;
+                                                              });
+
+                TrustManager[] trustAllCerts = new TrustManager[]{
+                        new X509TrustManager() {
+                            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                                return null;
+                            }
+                            public void checkClientTrusted(
+                                    java.security.cert.X509Certificate[] certs, String authType) {
+                            }
+                            public void checkServerTrusted(
+                                    java.security.cert.X509Certificate[] certs, String authType) {
+                            }
+                        }
+                };
+
+                try
+                {
+                    SSLContext sslContext = SSLContext.getInstance("TLS");
+                    sslContext.init(null, trustAllCerts, new SecureRandom());
+                    ((HttpsURLConnection)con).setSSLSocketFactory(sslContext.getSocketFactory());
+                }
+                catch (NoSuchAlgorithmException | KeyManagementException e)
+                {
+                    throw new RuntimeException(e);
+                }
+
+
+
+            }
         }
 
         saveUrlToFileFromUrlConnection(url, tempFile, con);

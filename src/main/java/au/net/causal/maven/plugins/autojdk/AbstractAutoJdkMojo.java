@@ -4,6 +4,7 @@ import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiVendorService;
 import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
+import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
@@ -23,11 +24,18 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.xml.datatype.DatatypeFactory;
 import java.io.File;
 import java.io.IOException;
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -173,7 +181,49 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         FoojayClient foojayClient = null;
         if (!offlineMode)
-            foojayClient = new FoojayClient();
+        {
+            ApiClient apiClient = FoojayClient.createDefaultApiClient();
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
+
+
+            //TODO
+
+            System.err.println("Warning: hack that accepts all SSL in AbstractAutoJdkMojo");
+
+            TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return null;
+                        }
+                        public void checkClientTrusted(
+                                java.security.cert.X509Certificate[] certs, String authType) {
+                        }
+                        public void checkServerTrusted(
+                                java.security.cert.X509Certificate[] certs, String authType) {
+                        }
+                    }
+            };
+
+            try
+            {
+                SSLContext sslContext = SSLContext.getInstance("TLS");
+                sslContext.init(null, trustAllCerts, new SecureRandom());
+                httpClientBuilder.sslContext(sslContext);
+            }
+            catch (NoSuchAlgorithmException | KeyManagementException e)
+            {
+                throw new RuntimeException(e);
+            }
+
+            //TODO
+
+            //Proxy configuration
+            MavenJdkProxySelector proxySelector = new MavenJdkProxySelector(repoSession);
+            httpClientBuilder.proxy(proxySelector).authenticator(proxySelector.authenticator());
+
+            apiClient.setHttpClientBuilder(httpClientBuilder);
+            foojayClient = new FoojayClient(apiClient);
+        }
 
         VendorService allVendorService;
         if (offlineMode)

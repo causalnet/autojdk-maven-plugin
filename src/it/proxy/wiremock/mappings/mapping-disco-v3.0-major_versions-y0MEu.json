@@ -1,0 +1,16 @@
+{
+  "id" : "dba15f89-4e37-3c21-bf51-b335c7087fca",
+  "request" : {
+    "url" : "/disco/v3.0/major_versions?include_build=false",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "body-disco-v3.0-major_versions-y0MEu.json",
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 04:34:31 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "dba15f89-4e37-3c21-bf51-b335c7087fca"
+}
