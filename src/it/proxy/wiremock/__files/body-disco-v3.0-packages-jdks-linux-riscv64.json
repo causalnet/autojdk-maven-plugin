@@ -13,7 +13,7 @@
         "term_of_support": "lts",
         "operating_system": "linux",
         "lib_c_type": "glibc",
-        "architecture": "x32",
+        "architecture": "riscv64",
         "fpu": "unknown",
         "package_type": "jdk",
         "javafx_bundled": true,
