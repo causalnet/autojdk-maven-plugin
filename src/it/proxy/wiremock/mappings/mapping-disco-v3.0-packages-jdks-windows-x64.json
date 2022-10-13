@@ -6,7 +6,7 @@
   },
   "response" : {
     "status" : 200,
-    "bodyFileName" : "body-disco-v3.0-packages-jdks-T91Bz.json",
+    "bodyFileName" : "body-disco-v3.0-packages-jdks-windows-x64.json",
     "headers" : {
       "Date" : "Thu, 13 Oct 2022 04:34:32 GMT",
       "Content-Type" : "application/json"
