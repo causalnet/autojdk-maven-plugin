@@ -56,6 +56,27 @@
                 </dependencies>
             </plugin>
 
+            <!-- Don't want to resolve previously installed fake JDK from the local repo, want to always download from the proxy, so purge it before autojdk runs -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>purge-fake-jdk-jar-from-local-repo</id>
+                        <goals>
+                            <goal>purge-local-repository</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <manualIncludes>
+                                <manualInclude>au.net.causal.autojdk.jdk:galah-vendor</manualInclude>
+                            </manualIncludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>@project.groupId@</groupId>
                 <artifactId>@project.artifactId@</artifactId>
