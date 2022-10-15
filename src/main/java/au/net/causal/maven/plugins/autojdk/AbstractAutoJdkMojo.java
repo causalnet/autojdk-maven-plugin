@@ -93,6 +93,12 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     @Parameter(property = "autojdk.update.policy")
     private String updatePolicy;
 
+    /**
+     * If true, skip execution of autojdk plugin.
+     */
+    @Parameter(property="autojdk.skip", defaultValue = "false")
+    private boolean skip;
+
     private AutoJdk autoJdk;
     protected final PlatformTools platformTools = new PlatformTools();
 
@@ -123,6 +129,12 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     public final void execute()
     throws MojoExecutionException, MojoFailureException
     {
+        if (skip)
+        {
+            getLog().info("AutoJDK plugin execution skipped due to configuration.");
+            return;
+        }
+
         Map<String, String> toolchainJdkRequirements = readToolchainsJdkRequirements();
         if (requiredJdkVersion == null)
             requiredJdkVersion = toolchainJdkRequirements.get("version");
