@@ -1,64 +1,55 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.net.HttpHeaders;
 import org.apache.commons.io.IOUtils;
 
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
-import java.net.Authenticator;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-public class SimpleFileDownloader implements FileDownloader
+public class HttpClientFileDownloader implements FileDownloader
 {
     private final ExceptionalSupplier<Path, IOException> tempDirectorySupplier;
-    private final ProxySelector proxySelector;
+    private final HttpClient.Builder httpClientBuilder;
+
     private final List<DownloadProgressListener> downloadProgressListeners = new CopyOnWriteArrayList<>();
-    
-    public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, ProxySelector proxySelector)
+
+    public HttpClientFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier, HttpClient.Builder httpClientBuilder)
     {
         Objects.requireNonNull(tempDirectorySupplier, "tempDirectorySupplier == null");
-        Objects.requireNonNull(proxySelector, "proxySelector == null");
+        Objects.requireNonNull(httpClientBuilder, "httpClientBuilder == null");
         this.tempDirectorySupplier = tempDirectorySupplier;
-        this.proxySelector = proxySelector;
+        this.httpClientBuilder = httpClientBuilder;
     }
 
-    public SimpleFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
+    public HttpClientFileDownloader(ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
     {
-        this(tempDirectorySupplier, new NoProxySelector());
+        this(tempDirectorySupplier, HttpClient.newBuilder());
     }
 
-    public SimpleFileDownloader(Path tempDirectory, ProxySelector proxySelector)
+    public HttpClientFileDownloader(Path tempDirectory, HttpClient.Builder httpClientBuilder)
     {
-        this(() -> tempDirectory, proxySelector);
+        this(() -> tempDirectory, httpClientBuilder);
     }
 
-    public SimpleFileDownloader(Path tempDirectory)
+    public HttpClientFileDownloader(Path tempDirectory)
     {
-        this(() -> tempDirectory, new NoProxySelector());
-    }
-
-    public ProxySelector getProxySelector()
-    {
-        return proxySelector;
+        this(() -> tempDirectory, HttpClient.newBuilder());
     }
 
     @Override
@@ -107,67 +98,40 @@ public class SimpleFileDownloader implements FileDownloader
     protected void saveUrlToTempFile(URL url, Path tempFile)
     throws IOException
     {
-        Proxy proxy = getProxySelector().selectProxy(url);
-        URLConnection con;
-        if (proxy == null)
-            con = url.openConnection();
-        else
-        {
-            con = url.openConnection(proxy);
-            Authenticator proxyAuthenticator = getProxySelector().proxyAuthenticator(url);
-            if (proxyAuthenticator != null && con instanceof HttpURLConnection)
-                ((HttpURLConnection)con).setAuthenticator(proxyAuthenticator);
-
-            System.err.println("Warning: hack that accepts all SSL in SimpleFileDownloader");
-            if (con instanceof HttpsURLConnection)
-            {
-                ((HttpsURLConnection)con).setHostnameVerifier((hostname, session) ->
-                                                              {
-                                                                  //TODO avoid
-                                                                  return true;
-                                                              });
-
-                TrustManager[] trustAllCerts = new TrustManager[]{
-                        new X509TrustManager() {
-                            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                                return null;
-                            }
-                            public void checkClientTrusted(
-                                    java.security.cert.X509Certificate[] certs, String authType) {
-                            }
-                            public void checkServerTrusted(
-                                    java.security.cert.X509Certificate[] certs, String authType) {
-                            }
-                        }
-                };
-
-                try
-                {
-                    SSLContext sslContext = SSLContext.getInstance("TLS");
-                    sslContext.init(null, trustAllCerts, new SecureRandom());
-                    ((HttpsURLConnection)con).setSSLSocketFactory(sslContext.getSocketFactory());
-                }
-                catch (NoSuchAlgorithmException | KeyManagementException e)
-                {
-                    throw new RuntimeException(e);
-                }
-
-
-
-            }
-        }
-
-        saveUrlToFileFromUrlConnection(url, tempFile, con);
+        saveUrlToFileUsingHttpClient(url, tempFile, httpClientBuilder.build());
     }
 
-    protected void saveUrlToFileFromUrlConnection(URL url, Path tempFile, URLConnection con)
+    protected void saveUrlToFileUsingHttpClient(URL url, Path tempFile, HttpClient httpClient)
     throws IOException
     {
-        long expectedSize = con.getContentLengthLong();
+        HttpResponse<InputStream> response;
+        try
+        {
+            response = httpClient.send(HttpRequest.newBuilder().uri(url.toURI()).build(), HttpResponse.BodyHandlers.ofInputStream());
+        }
+        catch (URISyntaxException e)
+        {
+            throw new IOException(e);
+        }
+        catch (InterruptedException e)
+        {
+            InterruptedIOException ex = new InterruptedIOException(e.getMessage());
+            ex.initCause(e);
+            throw ex;
+        }
+
+        long expectedSize = response.headers().firstValueAsLong(HttpHeaders.CONTENT_LENGTH).orElse(-1L);
         DownloadStartedEvent startEvent = new DownloadStartedEvent(url, expectedSize);
         downloadProgressListeners.forEach(listener -> listener.downloadStarted(startEvent));
 
-        try (InputStream is = con.getInputStream())
+        //Check response
+        int responseStatus = response.statusCode();
+        if (responseStatus == 404) //Special case for 404 - not found
+            throw new FileNotFoundException(url.toExternalForm());
+        if (responseStatus / 100 != 2)
+            throw new IOException("HTTP error: " + responseStatus);
+
+        try (InputStream is = response.body())
         {
             //This is faster but no progress
             //long numBytesCopied = Files.copy(is, tempFile, StandardCopyOption.REPLACE_EXISTING);
@@ -209,27 +173,6 @@ public class SimpleFileDownloader implements FileDownloader
             downloadProgressListeners.forEach(listener -> listener.downloadProgress(progressEvent));
         }
         return numBytesCopied;
-    }
-
-    public static interface ProxySelector
-    {
-        public Proxy selectProxy(URL url);
-        public Authenticator proxyAuthenticator(URL url);
-    }
-
-    public static class NoProxySelector implements ProxySelector
-    {
-        @Override
-        public Proxy selectProxy(URL url)
-        {
-            return null;
-        }
-
-        @Override
-        public Authenticator proxyAuthenticator(URL url)
-        {
-            return null;
-        }
     }
 
     /**

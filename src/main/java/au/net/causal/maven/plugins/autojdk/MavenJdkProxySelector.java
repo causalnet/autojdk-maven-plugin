@@ -43,12 +43,11 @@ public class MavenJdkProxySelector extends ProxySelector
 
         if (mavenProxy == null)
         {
-            log.warn("No proxy for URI: " + uri);
+            log.debug("No proxy for URI: " + uri);
             return List.of(Proxy.NO_PROXY);
         }
 
-        log.warn("Using proxy for URI: " + uri);
-        log.warn("---> " + mavenProxy.getHost() + ":" + mavenProxy.getPort());
+        log.debug("Using proxy for URI: " + uri + " ---> " + mavenProxy.getHost() + ":" + mavenProxy.getPort());
 
         return List.of(new Proxy(Proxy.Type.HTTP, new InetSocketAddress(mavenProxy.getHost(), mavenProxy.getPort())));
     }
@@ -58,7 +57,6 @@ public class MavenJdkProxySelector extends ProxySelector
     {
         //Ignore failure?
         log.warn("Proxy connect failure (" + sa + "): " + uri);
-        //TODO
     }
 
     public Authenticator authenticator()

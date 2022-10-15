@@ -16,14 +16,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.*;
 
 @WireMockTest
-class TestSimpleFileDownloader
+class TestHttpClientFileDownloader
 {
-    private SimpleFileDownloader downloader;
+    private HttpClientFileDownloader downloader;
 
     @BeforeEach
     void setUpDownloader(@TempDir Path tempDir)
     {
-        downloader = new SimpleFileDownloader(tempDir);
+        downloader = new HttpClientFileDownloader(tempDir);
     }
 
     @Test
