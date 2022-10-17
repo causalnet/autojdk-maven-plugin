@@ -1,0 +1,27 @@
+{
+  "id" : "caa1f9be-e4ca-35a5-a519-54e9d77b53e5",
+  "request" : {
+    "url" : "/download/galah-vendor-jdk.zip",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "body-galah-vendor-jdk.zip",
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 05:00:15 GMT",
+      "Content-Type" : "application/zip",
+      "Content-Length": "229",
+      "Last-Modified" : "Mon, 22 Aug 2022 17:22:54 GMT",
+      "ETag" : "\"101cf5a1-5e6d7b2bc6328\"",
+      "Cache-Control" : "max-age=2592000",
+      "Expires" : "Sat, 12 Nov 2022 04:53:07 GMT",
+      "Vary" : "Origin",
+      "CF-Cache-Status" : "HIT",
+      "Age" : "428",
+      "Accept-Ranges" : "bytes",
+      "Server" : "cloudflare",
+      "CF-RAY" : "759582b31fc0a880-SYD"
+    }
+  },
+  "uuid" : "46942b98-909b-343e-ae5b-54c12763b3af"
+}

@@ -1,0 +1,16 @@
+{
+  "id" : "3aa19238-cf15-361d-99ba-b19cf922e219",
+  "request" : {
+    "url" : "/disco/v3.0/distributions?include_versions=false&include_synonyms=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "body-disco-v3.0-distributions-O3KEJ.json",
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 04:34:31 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "3aa19238-cf15-361d-99ba-b19cf922e219"
+}

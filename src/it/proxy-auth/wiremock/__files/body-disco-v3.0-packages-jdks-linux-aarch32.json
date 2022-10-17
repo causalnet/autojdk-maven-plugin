@@ -1,0 +1,35 @@
+{
+    "result": [
+    {
+        "id": "415422fd6fa9085e0a2c1f44a07e9371",
+        "archive_type": "tar.gz",
+        "distribution": "galah-vendor",
+        "major_version": 17,
+        "java_version": "17.0.4.1+1",
+        "distribution_version": "17.36.17",
+        "jdk_version": 17,
+        "latest_build_available": true,
+        "release_status": "ga",
+        "term_of_support": "lts",
+        "operating_system": "linux",
+        "lib_c_type": "glibc",
+        "architecture": "aarch32",
+        "fpu": "unknown",
+        "package_type": "jdk",
+        "javafx_bundled": true,
+        "directly_downloadable": true,
+        "filename": "galah-jdk.zip",
+        "links":
+        {
+            "pkg_info_uri": "https://api.foojay.io/disco/v3.0/ids/415422fd6fa9085e0a2c1f44a07e9371",
+            "pkg_download_redirect": "https://api.foojay.io/disco/v3.0/ids/415422fd6fa9085e0a2c1f44a07e9371/redirect"
+        },
+        "free_use_in_production": true,
+        "tck_tested": "yes",
+        "aqavit_certified": "unknown",
+        "aqavit_cert_uri": "",
+        "size": 270333345,
+        "feature": []
+    }],
+    "message": "1 package(s) found"
+}

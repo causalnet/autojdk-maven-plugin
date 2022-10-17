@@ -1,0 +1,16 @@
+{
+  "id" : "9a4ee97d-e5f4-3a63-bd0d-6909adb09a7c",
+  "request" : {
+    "url" : "/disco/v3.0/packages/jdks?version=17&distro=galah-vendor&distribution=galah-vendor&architecture=x32&archive_type=zip&archive_type=tar.gz&operating_system=windows&release_status=ga&latest=all_of_version&free_to_use_in_production=true",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "body-disco-v3.0-packages-jdks-windows-x32.json",
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 04:34:32 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "9a4ee97d-e5f4-3a63-bd0d-6909adb09a7c"
+}

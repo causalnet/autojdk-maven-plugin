@@ -1,0 +1,15 @@
+{
+  "id" : "caa1f9be-e4ca-35a5-a519-54e9d77b52e5",
+  "request" : {
+    "url" : "/disco/v3.0/ids/415422fd6fa9085e0a2c1f44a07e9371/redirect",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 301,
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 05:00:15 GMT",
+      "Location": "http://galah.galah.galah/download/galah-vendor-jdk.zip"
+    }
+  },
+  "uuid" : "46942b98-909b-343e-ae5b-54c12763b1af"
+}

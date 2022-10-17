@@ -94,6 +94,12 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     private String updatePolicy;
 
     /**
+     * If true, allow downloads to come from http:// protocol as well as https://.  By default, http downloads are not allowed.
+     */
+    @Parameter(property="autojdk.download.allowHttp", defaultValue = "false")
+    private boolean allowHttpJdkDownloads;
+
+    /**
      * If true, skip execution of autojdk plugin.
      */
     @Parameter(property="autojdk.skip", defaultValue = "false")
@@ -161,11 +167,13 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
 
-        //Proxy configuration
+        //Proxy + other builder configuration
         MavenJdkProxySelector proxySelector = new MavenJdkProxySelector(repoSession);
         httpClientBuilder.proxy(proxySelector).authenticator(proxySelector.authenticator());
-
-        //FileDownloader fileDownloader = new SimpleFileDownloader(this::tempDownloadDirectory, new MavenProxySelector(repoSession));
+        if (allowHttpJdkDownloads)
+            httpClientBuilder.followRedirects(HttpClient.Redirect.ALWAYS);
+        else
+            httpClientBuilder.followRedirects(HttpClient.Redirect.NORMAL); //Allow redirect, except from HTTPS URLs to HTTP URLs.
 
         FileDownloader fileDownloader = new HttpClientFileDownloader(this::tempDownloadDirectory, httpClientBuilder);
         fileDownloader.addDownloadProgressListener(new MavenDownloadProgressAdapter(repoSession));

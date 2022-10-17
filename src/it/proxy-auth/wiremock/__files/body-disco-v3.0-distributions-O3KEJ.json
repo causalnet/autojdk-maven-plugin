@@ -1,0 +1,12 @@
+{
+  "result":
+  [{
+  "name":"Galah Vendor",
+  "api_parameter":"galah-vendor",
+  "maintained":true,
+  "synonyms": [
+    "galah"
+  ]
+}],
+  "message":""
+}
