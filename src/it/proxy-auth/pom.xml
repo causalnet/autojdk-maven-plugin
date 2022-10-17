@@ -56,7 +56,10 @@
                 </dependencies>
             </plugin>
 
-            <!-- Don't want to resolve previously installed fake JDK from the local repo, want to always download from the proxy, so purge it before autojdk runs -->
+            <!--
+            Don't want to resolve previously installed fake JDK from the local repo, want to always download from the proxy, so purge it before autojdk runs.
+            Needed despite running purge goal earlier, since purge won't work if there is no installed JDK but it still exists in the local repo.
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
