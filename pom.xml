@@ -415,6 +415,30 @@
                             </filesets>
                         </configuration>
                     </plugin>
+                    <!--
+                    If any of these JDKs are installed locally, clean them out or else the integration tests
+                    will pick these up instead of trying to download from remotes
+                    -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-dependency-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <id>purge-cached-jdks-from-local-repo</id>
+                                <goals>
+                                    <goal>purge-local-repository</goal>
+                                </goals>
+                                <phase>clean</phase>
+                                <configuration>
+                                    <manualIncludes>
+                                        <manualInclude>au.net.causal.autojdk.jdk:liberica</manualInclude>
+                                        <manualInclude>au.net.causal.autojdk.jdk:zulu</manualInclude>
+                                    </manualIncludes>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
