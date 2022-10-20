@@ -432,8 +432,7 @@
                                 <phase>clean</phase>
                                 <configuration>
                                     <manualIncludes>
-                                        <manualInclude>au.net.causal.autojdk.jdk:liberica</manualInclude>
-                                        <manualInclude>au.net.causal.autojdk.jdk:zulu</manualInclude>
+                                        <manualInclude>au.net.causal.autojdk.jdk</manualInclude>
                                     </manualIncludes>
                                 </configuration>
                             </execution>
