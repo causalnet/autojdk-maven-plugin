@@ -217,9 +217,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
-        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager));
+        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager, this::tempDownloadDirectory));
         if (!offlineMode)
-            jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, repositorySystem, repoSession, fileDownloader, "au.net.causal.autojdk.jdk", xmlManager));
+            jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, fileDownloader));
 
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
         Clock clock = Clock.systemDefaultZone();

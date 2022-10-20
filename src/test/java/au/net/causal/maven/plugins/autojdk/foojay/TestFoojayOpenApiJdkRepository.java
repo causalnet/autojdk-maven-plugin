@@ -1,23 +1,14 @@
 package au.net.causal.maven.plugins.autojdk.foojay;
 
-import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
 import au.net.causal.maven.plugins.autojdk.FileDownloader;
 import au.net.causal.maven.plugins.autojdk.JdkArchive;
 import au.net.causal.maven.plugins.autojdk.JdkSearchRequest;
-import au.net.causal.maven.plugins.autojdk.MavenArtifactJdkArchiveRepository;
 import au.net.causal.maven.plugins.autojdk.ReleaseType;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.OperatingSystem;
 import eu.hansolo.jdktools.versioning.VersionNumber;
-import jakarta.xml.bind.JAXBException;
 import org.apache.maven.artifact.versioning.VersionRange;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.resolution.ArtifactRequest;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.ArtifactResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -44,26 +34,16 @@ class TestFoojayOpenApiJdkRepository extends AbstractApiClientMockTestCase
 {
     private static final Logger log = LoggerFactory.getLogger(TestFoojayOpenApiJdkRepository.class);
 
-    private static final String JDK_GROUP_ID = "au.net.causal.autojdk.jdk";
-
     private FoojayOpenApiJdkRepository jdkRepository;
-
-    @Mock
-    private RepositorySystem repositorySystem;
-
-    @Mock
-    private RepositorySystemSession repositorySystemSession;
 
     @Mock
     private FileDownloader fileDownloader;
 
     @BeforeEach
     void setUp()
-    throws JAXBException
     {
-        AutoJdkXmlManager xmlManager = new AutoJdkXmlManager();
         FoojayClient foojayClient = new FoojayClient(apiClient);
-        jdkRepository = new FoojayOpenApiJdkRepository(foojayClient, repositorySystem, repositorySystemSession, fileDownloader, JDK_GROUP_ID, xmlManager);
+        jdkRepository = new FoojayOpenApiJdkRepository(foojayClient, fileDownloader);
     }
 
     @Test
@@ -256,17 +236,6 @@ class TestFoojayOpenApiJdkRepository extends AbstractApiClientMockTestCase
     {
         Path theUploadedFile = tempDir.resolve("jdk.zip");
 
-        //Never find anything in the local repo on first resolve attempt, but after it is added to the local repo
-        //we can then find it on the 2nd resolve attempt
-        when(repositorySystem.resolveArtifact(any(), any()))
-                //First lookup will fail
-                .thenThrow(ArtifactResolutionException.class)
-                //Second lookup done once file is uploaded
-                .thenAnswer(inv -> {
-                    ArtifactRequest req = inv.getArgument(1, ArtifactRequest.class);
-                    return new ArtifactResult(req).setArtifact(req.getArtifact().setFile(theUploadedFile.toFile()));
-                });
-
         when(fileDownloader.downloadFile(any())).thenAnswer(invocation -> new FileDownloader.Download(
                 invocation.getArgument(0, URL.class),
                 theUploadedFile
@@ -285,31 +254,13 @@ class TestFoojayOpenApiJdkRepository extends AbstractApiClientMockTestCase
                                        .findFirst()
                                        .orElseThrow();
 
-        JdkArchive download = jdkRepository.resolveArchive(result);
+        JdkArchive<FoojayOpenApiArtifact> download = jdkRepository.resolveArchive(result);
 
-        assertThat(download.getFile()).isEqualTo(theUploadedFile.toFile());
+        assertThat(download.getFile()).isEqualTo(theUploadedFile);
         assertThat(download.getArtifact().getVendor()).isEqualToIgnoringCase("zulu");
         assertThat(download.getArtifact().getVersion().toString()).startsWith("17.0.2");
 
-        verify(repositorySystem, times(2)).resolveArtifact(any(), any());
         verify(fileDownloader).downloadFile(any());
-
-        //Verify the downloaded file was actually installed to the local repo as well as the metadata
-        List<File> installedFiles = new ArrayList<>();
-        verify(repositorySystem, times(2)).install(any(), argThat(ir ->
-        {
-            assertThat(ir.getArtifacts()).hasSize(1);
-            Artifact artifact = ir.getArtifacts().iterator().next();
-            if (!installedFiles.contains(artifact.getFile())) //Workaround for mockito weirdness
-                installedFiles.add(artifact.getFile());
-            assertThat(artifact.getGroupId()).isEqualTo(JDK_GROUP_ID);
-            assertThat(artifact.getArtifactId()).isEqualTo("zulu");
-            assertThat(artifact.getVersion()).startsWith("17.0.2"); //Depending on search result, might have suffix
-            return true;
-        }));
-        assertThat(installedFiles).hasSize(2);
-        assertThat(installedFiles).first().isEqualTo(theUploadedFile.toFile());
-        assertThat(installedFiles).last().isEqualTo(theUploadedFile.resolveSibling(theUploadedFile.getFileName() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION).toFile());
     }
 
     /**

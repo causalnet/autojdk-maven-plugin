@@ -1,13 +1,10 @@
 package au.net.causal.maven.plugins.autojdk.foojay;
 
-import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
 import au.net.causal.maven.plugins.autojdk.FileDownloader;
 import au.net.causal.maven.plugins.autojdk.JdkArchive;
+import au.net.causal.maven.plugins.autojdk.JdkArchiveRepository;
 import au.net.causal.maven.plugins.autojdk.JdkRepositoryException;
 import au.net.causal.maven.plugins.autojdk.JdkSearchRequest;
-import au.net.causal.maven.plugins.autojdk.LocalMavenRepositoryCachedJdkArchiveRepository;
-import au.net.causal.maven.plugins.autojdk.MavenArtifactJdkArchiveRepository;
-import au.net.causal.maven.plugins.autojdk.MavenJdkArtifactMetadata;
 import au.net.causal.maven.plugins.autojdk.VersionTools;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
 import eu.hansolo.jdktools.ArchiveType;
@@ -19,20 +16,11 @@ import eu.hansolo.jdktools.versioning.VersionNumber;
 import org.apache.maven.artifact.versioning.Restriction;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.artifact.Artifact;
-import org.eclipse.aether.installation.InstallRequest;
-import org.eclipse.aether.installation.InstallationException;
-import org.eclipse.aether.resolution.ArtifactRequest;
-import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.ArtifactResult;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -44,20 +32,15 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArchiveRepository<FoojayOpenApiArtifact>
+public class FoojayOpenApiJdkRepository implements JdkArchiveRepository<FoojayOpenApiArtifact>
 {
     private final FoojayClient foojayClient;
     private final FileDownloader fileDownloader;
-    private final AutoJdkXmlManager xmlManager;
 
-    public FoojayOpenApiJdkRepository(FoojayClient foojayClient, RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
-                                      FileDownloader fileDownloader, String mavenArtifactGroupId,
-                                      AutoJdkXmlManager xmlManager)
+    public FoojayOpenApiJdkRepository(FoojayClient foojayClient, FileDownloader fileDownloader)
     {
-        super(repositorySystem, repositorySystemSession, mavenArtifactGroupId);
         this.foojayClient = Objects.requireNonNull(foojayClient);
         this.fileDownloader = Objects.requireNonNull(fileDownloader);
-        this.xmlManager = Objects.requireNonNull(xmlManager);
     }
 
     /**
@@ -288,24 +271,9 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
     }
 
     @Override
-    public JdkArchive resolveArchive(FoojayOpenApiArtifact jdkArtifact)
+    public JdkArchive<FoojayOpenApiArtifact> resolveArchive(FoojayOpenApiArtifact jdkArtifact)
     throws JdkRepositoryException
     {
-        //First check if we don't already have a cached version in the local repo
-        Artifact mavenArtifact = mavenArtifactForJdkArtifact(jdkArtifact);
-        ArtifactRequest lookupRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList() /*no remotes, local only*/, null);
-        try
-        {
-            ArtifactResult lookupResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), lookupRequest);
-
-            //If we get here, archive was found in the local repo so just return that
-            return new JdkArchive(jdkArtifact, lookupResult.getArtifact().getFile());
-        }
-        catch (ArtifactResolutionException e)
-        {
-            //Not found in local repo, that's fine, move on to downloading it
-        }
-
         //If we get here, could not find in the local repo so download it and save to local repo
         if (jdkArtifact.getJdkPackage().getLinks() == null || jdkArtifact.getJdkPackage().getLinks().getPkgDownloadRedirect() == null)
             throw new JdkRepositoryException("Download information not found for Foojay package " + jdkArtifact.getJdkPackage().getId() + ":" + jdkArtifact.getJdkPackage().getJavaVersion());
@@ -315,42 +283,10 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
         //Download into local repository
 
         //First download to temp file
-        try (FileDownloader.Download download = fileDownloader.downloadFile(downloadUri.toURL()))
+        try
         {
-            //Once file is downloaded, install to local repo
-            Path downloadedFile = download.getFile();
-
-            //download's close() in try-with-resources will handle deleting the temp file
-
-            InstallRequest request = new InstallRequest();
-            mavenArtifact = mavenArtifact.setFile(downloadedFile.toFile());
-            request.setArtifacts(Collections.singletonList(mavenArtifact));
-            try
-            {
-                getRepositorySystem().install(getRepositorySystemSession(), request);
-
-                //Re-resolve to local repo so file of artifact gets filled in
-                mavenArtifact = mavenArtifact.setFile(null);
-                ArtifactRequest reresolveRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList(), null);
-                ArtifactResult reresolveResult = getRepositorySystem().resolveArtifact(getRepositorySystemSession(), reresolveRequest);
-                File jdkArchiveInLocalRepo = reresolveResult.getArtifact().getFile();
-
-                //Also upload metadata
-                Path metadataFile = downloadedFile.resolveSibling(downloadedFile.getFileName().toString() + "." + MavenArtifactJdkArchiveRepository.AUTOJDK_METADATA_EXTENSION);
-                generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(jdkArtifact.getArchiveType()), jdkArtifact.getReleaseType()), metadataFile);
-                Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(mavenArtifact);
-                metadataArtifact = metadataArtifact.setFile(metadataFile.toFile());
-
-                InstallRequest metadataInstallRequest = new InstallRequest();
-                metadataInstallRequest.setArtifacts(Collections.singleton(metadataArtifact));
-                getRepositorySystem().install(getRepositorySystemSession(), metadataInstallRequest);
-
-                return new JdkArchive(jdkArtifact, jdkArchiveInLocalRepo);
-            }
-            catch (InstallationException | ArtifactResolutionException | AutoJdkXmlManager.XmlWriteException e)
-            {
-                throw new JdkRepositoryException("Failed to install JDK archive artifact to local repo: " + e.getMessage(), e);
-            }
+            FileDownloader.Download download = fileDownloader.downloadFile(downloadUri.toURL());
+            return new JdkArchive<>(jdkArtifact, download.getFile());
         }
         catch (MalformedURLException e)
         {
@@ -362,10 +298,19 @@ public class FoojayOpenApiJdkRepository extends LocalMavenRepositoryCachedJdkArc
         }
     }
 
-    private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
-    throws AutoJdkXmlManager.XmlWriteException
+    @Override
+    public void purgeResolvedArchive(JdkArchive<FoojayOpenApiArtifact> archive)
+    throws JdkRepositoryException
     {
-        xmlManager.writeFile(metadata, file);
+        //The JDK archive will just be a temporary download
+        try
+        {
+            Files.deleteIfExists(archive.getFile());
+        }
+        catch (IOException e)
+        {
+            throw new JdkRepositoryException("Error deleting downloaded archive " + archive.getFile() + ": " + e.getMessage(), e);
+        }
     }
 
     protected static class VersionNumberAndLatest

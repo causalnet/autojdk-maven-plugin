@@ -1,25 +1,25 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.Objects;
 
-public class JdkArchive
+public class JdkArchive<A extends JdkArtifact>
 {
-    private final JdkArtifact artifact;
-    private final File file;
+    private final A artifact;
+    private final Path file;
 
-    public JdkArchive(JdkArtifact artifact, File file)
+    public JdkArchive(A artifact, Path file)
     {
         this.artifact = Objects.requireNonNull(artifact);
         this.file = Objects.requireNonNull(file);
     }
 
-    public JdkArtifact getArtifact()
+    public A getArtifact()
     {
         return artifact;
     }
 
-    public File getFile()
+    public Path getFile()
     {
         return file;
     }

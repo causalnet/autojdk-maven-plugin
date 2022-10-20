@@ -56,28 +56,32 @@ public class CompositeJdkArchiveRepository implements JdkArchiveRepository<Compo
     }
 
     @Override
-    public JdkArchive resolveArchive(WrappedJdkArtifact<?> jdkArtifact)
+    public JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> resolveArchive(WrappedJdkArtifact<?> jdkArtifact)
     throws JdkRepositoryException
     {
         return resolveArchiveTypeSafe(jdkArtifact);
     }
 
-    private <A extends JdkArtifact> JdkArchive resolveArchiveTypeSafe(WrappedJdkArtifact<A> wrappedJdkArtifact)
+    private <A extends JdkArtifact> JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> resolveArchiveTypeSafe(WrappedJdkArtifact<A> wrappedJdkArtifact)
     throws JdkRepositoryException
     {
-        return wrappedJdkArtifact.getSourceRepository().resolveArchive(wrappedJdkArtifact.getWrappedArtifact());
+        JdkArchiveRepository<A> repository = wrappedJdkArtifact.getSourceRepository();
+        JdkArchive<A> targetArchive = repository.resolveArchive(wrappedJdkArtifact.getWrappedArtifact());
+        return new JdkArchive<>(wrappedJdkArtifact, targetArchive.getFile());
     }
 
     @Override
-    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest) throws JdkRepositoryException
+    @SuppressWarnings({"rawtypes", "unchecked"}) //Compiler bug?  JdkArchive<WrappedJdkArtifact<A>> where A is any should be convertible from JdkArchive<WrappedJdkArtifact<?>> but isn't...
+    public void purgeResolvedArchive(JdkArchive<WrappedJdkArtifact<?>> archive)
+    throws JdkRepositoryException
     {
-        List<JdkArchive> archives = new ArrayList<>();
-        for (JdkArchiveRepository<?> repository : repositories)
-        {
-            Collection<? extends JdkArchive> curPurgeResult = repository.purgeCache(jdkMatchSearchRequest);
-            archives.addAll(curPurgeResult);
-        }
-        return archives;
+        purgeResolvedArchiveTypeSafe((JdkArchive)archive);
+    }
+
+    private <A extends JdkArtifact> void purgeResolvedArchiveTypeSafe(JdkArchive<WrappedJdkArtifact<A>> archive)
+    throws JdkRepositoryException
+    {
+        archive.getArtifact().getSourceRepository().purgeResolvedArchive(new JdkArchive<>(archive.getArtifact().getWrappedArtifact(), archive.getFile()));
     }
 
     /**

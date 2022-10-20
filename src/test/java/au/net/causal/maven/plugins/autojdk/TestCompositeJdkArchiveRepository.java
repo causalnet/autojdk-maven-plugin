@@ -1,7 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Iterators;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion;
@@ -14,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.File;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
@@ -146,7 +144,7 @@ class TestCompositeJdkArchiveRepository
         when(repo1.search(any())).thenReturn(List.of());
         when(repo2.search(any())).thenAnswer(i -> List.of(artifact));
         when(repo3.search(any())).thenReturn(List.of());
-        when(repo2.resolveArchive(any())).thenReturn(new JdkArchive(artifact, tempDir));
+        when(repo2.resolveArchive(any())).thenReturn(new JdkArchive<>(artifact, tempDir.toPath()));
 
         CompositeJdkArchiveRepository mainRepo = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
                                                                                    List.of(repo1, repo2, repo3));
@@ -156,9 +154,9 @@ class TestCompositeJdkArchiveRepository
 
         CompositeJdkArchiveRepository.WrappedJdkArtifact<?> result = Iterables.getOnlyElement(results);
 
-        JdkArchive archive = mainRepo.resolveArchive(result);
-        assertThat(archive.getArtifact()).isEqualTo(artifact);
-        assertThat(archive.getFile()).isEqualTo(tempDir);
+        JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> archive = mainRepo.resolveArchive(result);
+        assertThat(archive.getArtifact().getWrappedArtifact()).isEqualTo(artifact);
+        assertThat(archive.getFile()).isEqualTo(tempDir.toPath());
 
         verify(repo1, never()).resolveArchive(any());
         verify(repo2).resolveArchive(any());

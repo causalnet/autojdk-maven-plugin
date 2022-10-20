@@ -7,6 +7,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
 /**
@@ -31,8 +32,16 @@ public class SearchErrorLoggingJdkArchiveRepository<A extends JdkArtifact> imple
     public static List<? extends SearchErrorLoggingJdkArchiveRepository<?>> wrapRepositories(List<? extends JdkArchiveRepository<?>> repositories)
     {
         return repositories.stream()
-                           .map(SearchErrorLoggingJdkArchiveRepository::new)
+                           .map(SearchErrorLoggingJdkArchiveRepository::wrapRepository)
                            .collect(Collectors.toUnmodifiableList());
+    }
+
+    private static SearchErrorLoggingJdkArchiveRepository<?> wrapRepository(JdkArchiveRepository<?> repository)
+    {
+        if (repository instanceof CachingJdkArchiveRepository<?>)
+            return new SearchErrorLoggingCachingJdkArchiveRepository<>((CachingJdkArchiveRepository<?>)repository);
+        else
+            return new SearchErrorLoggingJdkArchiveRepository<>(repository);
     }
 
     /**
@@ -66,15 +75,22 @@ public class SearchErrorLoggingJdkArchiveRepository<A extends JdkArtifact> imple
     }
 
     @Override
-    public JdkArchive resolveArchive(A jdkArtifact) throws JdkRepositoryException
+    public JdkArchive<A> resolveArchive(A jdkArtifact) throws JdkRepositoryException
     {
         return repository.resolveArchive(jdkArtifact);
     }
 
     @Override
-    public Collection<? extends JdkArchive> purgeCache(JdkPurgeCacheRequest jdkMatchSearchRequest)
-    throws JdkRepositoryException
+    public void purgeResolvedArchive(JdkArchive<A> archive) throws JdkRepositoryException
     {
-        return repository.purgeCache(jdkMatchSearchRequest);
+        repository.purgeResolvedArchive(archive);
+    }
+
+    @Override
+    public String toString()
+    {
+        return new StringJoiner(", ", SearchErrorLoggingJdkArchiveRepository.class.getSimpleName() + "[", "]")
+                .add("repository=" + repository)
+                .toString();
     }
 }
