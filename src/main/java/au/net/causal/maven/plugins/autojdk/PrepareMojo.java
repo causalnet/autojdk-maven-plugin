@@ -13,11 +13,14 @@ import java.util.List;
 import java.util.Map;
 
 @Mojo(name="prepare", defaultPhase = LifecyclePhase.VALIDATE)
-public class PrepareMojo extends AbstractAutoJdkMojo
+public class PrepareMojo extends AbstractProjectBasedAutoJdkMojo
 {
     @Override
-    protected void executeImpl() throws MojoExecutionException, MojoFailureException
+    public void execute()
+    throws MojoExecutionException, MojoFailureException
     {
+        super.execute();
+
         try
         {
             //Ensure we have an available JDK to work with

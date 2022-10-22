@@ -7,19 +7,13 @@ import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorServ
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
-import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
-import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Plugin;
-import org.apache.maven.model.PluginExecution;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.StringUtils;
-import org.codehaus.plexus.util.xml.Xpp3Dom;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.RemoteRepository;
@@ -32,9 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 public abstract class AbstractAutoJdkMojo extends AbstractMojo
 {
@@ -66,14 +58,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     protected File downloadDirectory;
 
     private boolean downloadDirectorySetUp;
-
-    @Parameter(property = PROPERTY_JDK_VERSION)
-    private String requiredJdkVersion;
-
-    private VersionRange requiredJdkVersionRange;
-
-    @Parameter(property = PROPERTY_JDK_VENDOR)
-    private String requiredJdkVendor;
 
     @Parameter(property = PROPERTY_JDK_RELEASE_TYPE, defaultValue = "GA", required = true)
     private ReleaseType jdkReleaseType;
@@ -108,22 +92,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     private AutoJdk autoJdk;
     protected final PlatformTools platformTools = new PlatformTools();
 
-    protected abstract void executeImpl()
-    throws MojoExecutionException, MojoFailureException;
-
-    protected VersionRange getRequiredJdkVersionRange()
-    {
-        return requiredJdkVersionRange;
-    }
-
     protected AutoJdk autoJdk()
     {
         return autoJdk;
-    }
-
-    protected String getRequiredJdkVendor()
-    {
-        return requiredJdkVendor;
     }
 
     protected ReleaseType getJdkReleaseType()
@@ -132,31 +103,13 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     }
 
     @Override
-    public final void execute()
+    public void execute()
     throws MojoExecutionException, MojoFailureException
     {
         if (skip)
         {
             getLog().info("AutoJDK plugin execution skipped due to configuration.");
             return;
-        }
-
-        Map<String, String> toolchainJdkRequirements = readToolchainsJdkRequirements();
-        if (requiredJdkVersion == null)
-            requiredJdkVersion = toolchainJdkRequirements.get("version");
-        if (requiredJdkVendor == null)
-            requiredJdkVendor = toolchainJdkRequirements.get("vendor");
-
-        if (requiredJdkVersion == null)
-            throw new MojoExecutionException("No required JDK version configured.  Either configure directly on the plugin or add toolchains plugin with appropriate configuration.");
-
-        try
-        {
-            requiredJdkVersionRange = VersionRange.createFromVersionSpec(requiredJdkVersion);
-        }
-        catch (InvalidVersionSpecificationException e)
-        {
-            throw new MojoExecutionException("Invalid JDK version/range: " + requiredJdkVersion, e);
         }
 
         AutoJdkHome autojdkHome = AutoJdkHome.defaultHome();
@@ -226,8 +179,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         JdkSearchUpdateChecker jdkSearchUpdateChecker = new MetadataFileJdkSearchUpdateChecker(autojdkHome.getAutoJdkSearchUpToDateCheckMetadataFile(), xmlManager);
 
         autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration, jdkSearchUpdateChecker, clock);
-
-        executeImpl();
     }
 
     private void configureAutoJdkUpdatePolicy(AutoJdkConfiguration configuration)
@@ -277,46 +228,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         return downloadDirectory.toPath();
     }
 
-    private Map<String, String> readToolchainsJdkRequirements()
-    {
-        Map<String, String> requirements = new LinkedHashMap<>();
-
-        Plugin toolchainsPlugin = project.getBuild().getPluginsAsMap().get("org.apache.maven.plugins:maven-toolchains-plugin");
-
-        //Should only have one execution, but if there's more than one just combine everything
-        //If there's multiple executions with different requirements I'd consider the build broken
-        //so if we break there as well it's not a huge deal
-        if (toolchainsPlugin != null && toolchainsPlugin.getExecutions() != null)
-        {
-            for (PluginExecution toolchainsPluginExecution : toolchainsPlugin.getExecutions())
-            {
-                Object configuration = toolchainsPluginExecution.getConfiguration();
-                if (configuration instanceof Xpp3Dom)
-                {
-                    Xpp3Dom xppConfig = (Xpp3Dom) configuration;
-
-                    Xpp3Dom toolchainsConfig = xppConfig.getChild("toolchains");
-                    if (toolchainsConfig != null)
-                    {
-                        Xpp3Dom jdkConfig = toolchainsConfig.getChild("jdk");
-                        if (jdkConfig != null)
-                        {
-                            for (Xpp3Dom requirementConfig : jdkConfig.getChildren())
-                            {
-                                String requirementName = requirementConfig.getName();
-                                String requirementValue = requirementConfig.getValue();
-                                if (StringUtils.isNotEmpty(requirementName) && StringUtils.isNotEmpty(requirementValue))
-                                    requirements.put(requirementName, requirementValue);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return requirements;
-    }
-
     /**
      * Determines/calculates the version translation scheme that should be used from the version translation scheme configured directly or, if set to automatic mode,
      * detects which should be used based on the version.
@@ -330,7 +241,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     {
         if (VERSION_TRANSLATION_SCHEME_AUTO.equalsIgnoreCase(versionTranslationScheme))
         {
-            VersionTranslationScheme selectedScheme = detectVersionTranslationSchemeFromRequiredJdkVersion();
+            VersionTranslationScheme selectedScheme = detectVersionTranslationScheme();
             if (selectedScheme == null)
                 selectedScheme = StandardVersionTranslationScheme.UNMODIFIED;
 
@@ -350,36 +261,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         throw new MojoExecutionException("Unknown version translation scheme: " + versionTranslationScheme);
     }
 
-    /**
-     * When the required JDK version (possibly read from toolchains) is a simple integer value, e.g. '17' then use
-     * {@link StandardVersionTranslationScheme#MAJOR_AND_FULL} translation, otherwise use
-     * {@link StandardVersionTranslationScheme#UNMODIFIED} translation.  This will allow toolchains configurations
-     * with java version set at e.g. '17' to just work even with JDK 17.0.2.
-     *
-     * @see StandardVersionTranslationScheme
-     */
-    private VersionTranslationScheme detectVersionTranslationSchemeFromRequiredJdkVersion()
+    protected VersionTranslationScheme detectVersionTranslationScheme()
     {
-        //If the required format is a simple integer...
-        if (isPositiveInteger(requiredJdkVersion))
-            return StandardVersionTranslationScheme.MAJOR_AND_FULL;
-        else
-            return StandardVersionTranslationScheme.UNMODIFIED;
-    }
-
-    /**
-     * @return true if {@code s} is a parseable integer with value greater than zero, false otherwise.
-     */
-    private static boolean isPositiveInteger(String s)
-    {
-        try
-        {
-            int n = Integer.parseInt(s);
-            return n > 0;
-        }
-        catch (NumberFormatException e)
-        {
-            return false;
-        }
+        //No project, so we can't
+        return null;
     }
 }

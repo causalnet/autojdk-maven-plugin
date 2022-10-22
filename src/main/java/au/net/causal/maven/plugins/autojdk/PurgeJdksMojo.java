@@ -12,7 +12,7 @@ import java.io.IOException;
 /**
  * Removes JDKs previously installed by AutoJDK from the local system.
  */
-@Mojo(name="purge-jdks")
+@Mojo(name="purge-jdks", requiresProject = false)
 public class PurgeJdksMojo extends AbstractAutoJdkMojo
 {
     /**
@@ -42,8 +42,11 @@ public class PurgeJdksMojo extends AbstractAutoJdkMojo
     private static final String PURGE_ALL_VENDOR = "all";
 
     @Override
-    protected void executeImpl() throws MojoExecutionException, MojoFailureException
+    public void execute()
+    throws MojoExecutionException, MojoFailureException
     {
+        super.execute();
+
         String vendorPurgeFilter;
         if (PURGE_ALL_VENDOR.equals(purgeJdkVendor))
             vendorPurgeFilter = null;

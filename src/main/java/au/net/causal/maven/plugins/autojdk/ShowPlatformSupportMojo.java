@@ -16,16 +16,18 @@ import java.util.stream.Collectors;
  * Prints out support for different host platforms (by operating system and architecture) and latest JDK versions for the current project's configured JDK.
  */
 @Mojo(name="platform-support")
-public class ShowPlatformSupportMojo extends AbstractAutoJdkMojo
+public class ShowPlatformSupportMojo extends AbstractProjectBasedAutoJdkMojo
 {
     @Override
-    protected void executeImpl() throws MojoExecutionException, MojoFailureException
+    public void execute() throws MojoExecutionException, MojoFailureException
     {
+        super.execute();
+
         JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(getRequiredJdkVersionRange(),
-                                                                  null,
-                                                                  null,
-                                                                  getRequiredJdkVendor(),
-                                                                  getJdkReleaseType());
+                null,
+                null,
+                getRequiredJdkVendor(),
+                getJdkReleaseType());
 
         Collection<? extends JdkArtifact> results = autoJdk().findArtifactsInAllRepositories(jdkSearchRequest);
 
