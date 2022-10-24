@@ -74,7 +74,7 @@ public abstract class AbstractProjectBasedAutoJdkMojo extends AbstractAutoJdkMoj
     }
 
     @Override
-    public void execute()
+    protected void executeImpl()
     throws MojoExecutionException, MojoFailureException
     {
         Map<String, String> toolchainJdkRequirements = readToolchainsJdkRequirements();
@@ -95,7 +95,7 @@ public abstract class AbstractProjectBasedAutoJdkMojo extends AbstractAutoJdkMoj
             throw new MojoExecutionException("Invalid JDK version/range: " + requiredJdkVersion, e);
         }
 
-        super.execute();
+        super.executeImpl();
     }
 
     /**

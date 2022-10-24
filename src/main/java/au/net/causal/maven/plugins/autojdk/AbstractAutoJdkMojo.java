@@ -87,7 +87,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
      * If true, skip execution of autojdk plugin.
      */
     @Parameter(property="autojdk.skip", defaultValue = "false")
-    private boolean skip;
+    protected boolean skip;
 
     private AutoJdk autoJdk;
     protected final PlatformTools platformTools = new PlatformTools();
@@ -102,16 +102,9 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         return jdkReleaseType;
     }
 
-    @Override
-    public void execute()
+    protected void executeImpl()
     throws MojoExecutionException, MojoFailureException
     {
-        if (skip)
-        {
-            getLog().info("AutoJDK plugin execution skipped due to configuration.");
-            return;
-        }
-
         AutoJdkHome autojdkHome = AutoJdkHome.defaultHome();
         if (autoJdkConfigurationFile == null)
             autoJdkConfigurationFile = autojdkHome.getAutoJdkConfigurationFile().toFile();
@@ -179,6 +172,19 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         JdkSearchUpdateChecker jdkSearchUpdateChecker = new MetadataFileJdkSearchUpdateChecker(autojdkHome.getAutoJdkSearchUpToDateCheckMetadataFile(), xmlManager);
 
         autoJdk = new AutoJdk(localJdkResolver, localJdkResolver, jdkArchiveRepositories, versionTranslationScheme, autoJdkConfiguration, jdkSearchUpdateChecker, clock);
+    }
+
+    @Override
+    public final void execute()
+    throws MojoExecutionException, MojoFailureException
+    {
+        if (skip)
+        {
+            getLog().info("AutoJDK plugin execution skipped due to configuration.");
+            return;
+        }
+
+        executeImpl();
     }
 
     private void configureAutoJdkUpdatePolicy(AutoJdkConfiguration configuration)

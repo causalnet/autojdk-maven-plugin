@@ -19,9 +19,10 @@ import java.util.stream.Collectors;
 public class ShowPlatformSupportMojo extends AbstractProjectBasedAutoJdkMojo
 {
     @Override
-    public void execute() throws MojoExecutionException, MojoFailureException
+    protected void executeImpl()
+    throws MojoExecutionException, MojoFailureException
     {
-        super.execute();
+        super.executeImpl();
 
         JdkSearchRequest jdkSearchRequest =  new JdkSearchRequest(getRequiredJdkVersionRange(),
                 null,

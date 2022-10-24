@@ -61,10 +61,10 @@ public class PurgeJdksMojo extends AbstractAutoJdkMojo
     private static final String PURGE_ALL_VALUE = "all";
 
     @Override
-    public void execute()
+    protected void executeImpl()
     throws MojoExecutionException, MojoFailureException
     {
-        super.execute();
+        super.executeImpl();
 
         String vendorPurgeFilter;
         if (PURGE_ALL_VALUE.equals(purgeJdkVendor))

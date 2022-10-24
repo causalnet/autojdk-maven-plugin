@@ -16,10 +16,10 @@ import java.util.Map;
 public class PrepareMojo extends AbstractProjectBasedAutoJdkMojo
 {
     @Override
-    public void execute()
+    protected void executeImpl()
     throws MojoExecutionException, MojoFailureException
     {
-        super.execute();
+        super.executeImpl();
 
         try
         {
