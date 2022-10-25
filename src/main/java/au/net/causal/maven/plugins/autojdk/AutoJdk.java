@@ -319,14 +319,16 @@ public class AutoJdk
     private boolean localJdkMatches(LocalJdk jdk, JdkSearchRequest searchRequest)
     {
         //Reject if architecture does not match
-        if (!searchRequest.getArchitecture().equals(jdk.getArchitecture()) &&
+        if (searchRequest.getArchitecture() != null &&
+            !searchRequest.getArchitecture().equals(jdk.getArchitecture()) &&
             !searchRequest.getArchitecture().getSynonyms().contains(jdk.getArchitecture()))
         {
             return false;
         }
 
         //Reject if operating system does not match
-        if (!searchRequest.getOperatingSystem().equals(jdk.getOperatingSystem()) &&
+        if (searchRequest.getOperatingSystem() != null &&
+            !searchRequest.getOperatingSystem().equals(jdk.getOperatingSystem()) &&
             !searchRequest.getOperatingSystem().getSynonyms().contains(jdk.getOperatingSystem()))
         {
             return false;

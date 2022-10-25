@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>au.net.causal.maven.plugins.autojdk.it</groupId>
+    <artifactId>autojdk-sample-maven-repo-jdk</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>AutoJDK Testing Project</name>
+
+    <properties>
+    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>    	
+        <java.version>17</java.version>
+    </properties>
+
+    <build>
+    	<pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.22.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>@project.groupId@</groupId>
+                <artifactId>@project.artifactId@</artifactId>
+                <version>@project.version@</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>${java.version}</version>
+                            <!-- Not a real vendor, but we install an artifact to support this -->
+                            <vendor>galah-vendor</vendor>
+                        </jdk>
+                    </toolchains>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
