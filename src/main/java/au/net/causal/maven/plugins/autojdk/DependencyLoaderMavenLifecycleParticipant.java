@@ -132,6 +132,7 @@ public abstract class DependencyLoaderMavenLifecycleParticipant extends Abstract
         //Very important that if we get here we are running as ext using the core loader (plexus.core realm)
         //and we definitely don't have our own isolated loader
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
+
         Set<String> providedArtifacts;
         ClassRealm classRealm;
         if (loader instanceof ClassRealm)
@@ -139,6 +140,11 @@ public abstract class DependencyLoaderMavenLifecycleParticipant extends Abstract
             CoreExtensionEntry coreEntry = CoreExtensionEntry.discoverFrom((ClassRealm) loader);
             providedArtifacts = coreEntry.getExportedArtifacts();
             classRealm = (ClassRealm)loader;
+        }
+        else if (container.getContainerRealm() != null) //Running from lib/ext or maybe from IntelliJ import
+        {
+            providedArtifacts = Set.of();
+            classRealm = container.getContainerRealm();
         }
         else //Can't look it up, do the best we can
         {
@@ -161,12 +167,11 @@ public abstract class DependencyLoaderMavenLifecycleParticipant extends Abstract
                 throw new MavenExecutionException("Unexpected empty core extension entries.", (Exception)null);
 
             extensionRealm = coreExtensionEntries.get(0).getClassRealm();
-
         }
         catch (DuplicateRealmException e)
         {
             //This happens when the extension might have been loaded both with lib/ext and with extensions.xml
-            //Pretty are but it might happen
+            //Pretty strange but it might happen - can also happen with IntelliJ imports for some reason
             //We know we are lib/ext, but there is another classrealm with the extension loaded already
 
             //If we don't have a realm loader ourselves, just bail out, nothing we can do
