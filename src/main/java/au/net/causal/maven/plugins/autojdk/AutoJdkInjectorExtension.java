@@ -38,7 +38,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
      */
     private final List<? extends JavaVersionDetector> javaVersionDetectors = List.of(
             new UserPropertyJavaDetector(),
-            new CompilerPluginJavaDetector()
+            new CompilerPluginJavaDetector(),
+            new KotlinPluginJavaDetector()
     );
 
     /**
@@ -79,18 +80,19 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
         for (MavenProject project : session.getProjects())
         {
-            processProject(project, extensionProperties, autoJdkConfiguration);
+            processProject(project, session, extensionProperties, autoJdkConfiguration);
         }
     }
 
-    private void processProject(MavenProject project, AutoJdkExtensionProperties extensionProperties,
+    private void processProject(MavenProject project, MavenSession session,
+                                AutoJdkExtensionProperties extensionProperties,
                                 AutoJdkConfiguration autoJdkConfiguration)
     throws MavenExecutionException
     {
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
         Plugin toolchainsPlugin = project.getPlugin("org.apache.maven.plugins:maven-toolchains-plugin");
 
-        VersionRange requiredJavaVersion = calculateRequiredJavaVersionRange(project, extensionProperties);
+        VersionRange requiredJavaVersion = calculateRequiredJavaVersionRange(project, session, extensionProperties);
         if (requiredJavaVersion == null)
             return;
 
@@ -197,7 +199,9 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
      *
      * @throws MavenExecutionException if an error occurs creating or processing the Java version.
      */
-    private VersionRange calculateRequiredJavaVersionRange(MavenProject project, AutoJdkExtensionProperties extensionProperties)
+    private VersionRange calculateRequiredJavaVersionRange(MavenProject project,
+                                                           MavenSession session,
+                                                           AutoJdkExtensionProperties extensionProperties)
     throws MavenExecutionException
     {
         //Look at:
@@ -206,7 +210,7 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         //- enforcer plugin configuration
         //TODO maybe make this extensible?
 
-        ProjectContext projectContext = new ProjectContext(project, extensionProperties);
+        ProjectContext projectContext = new ProjectContext(project, session, extensionProperties);
         for (JavaVersionDetector javaVersionDetector : javaVersionDetectors)
         {
             try
