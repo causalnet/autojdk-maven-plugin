@@ -91,6 +91,8 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
     {
         Plugin autoJdkPlugin = project.getPlugin(AUTOJDK_PLUGIN_GROUP_ID + ":" + AUTOJDK_PLUGIN_ARTIFACT_ID);
         Plugin toolchainsPlugin = project.getPlugin("org.apache.maven.plugins:maven-toolchains-plugin");
+        Plugin kotlinPlugin = project.getPlugin("org.jetbrains.kotlin:kotlin-maven-plugin");
+        boolean kotlinSupportRequired = kotlinPlugin != null;
 
         VersionRange requiredJavaVersion = calculateRequiredJavaVersionRange(project, session, extensionProperties);
         if (requiredJavaVersion == null)
@@ -128,11 +130,11 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
             throw new MavenExecutionException(e.getMessage(), e);
         }
 
-        //Inject toolchains
+        //Inject toolchains, autojdk plugin
         if (toolchainsPlugin == null)
             injectToolchainsPlugin(project, requiredJavaVersion, extensionProperties);
         if (autoJdkPlugin == null)
-            injectAutoJdkPlugin(project);
+            injectAutoJdkPlugin(project, kotlinSupportRequired);
     }
 
     private void injectToolchainsPlugin(MavenProject project, VersionRange requiredJavaVersion, AutoJdkExtensionProperties extensionProperties)
@@ -169,10 +171,11 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         project.getBuild().getPluginsAsMap().put(plugin.getKey(), plugin);
     }
 
-    private void injectAutoJdkPlugin(MavenProject project)
+    private void injectAutoJdkPlugin(MavenProject project, boolean kotlinSupportRequired)
     throws MavenExecutionException
     {
         String autoJdkPluginVersion = lookupAutoJdkPluginVersion();
+
         log.info("AutoJDK extension injecting AutoJDK plugin " + autoJdkPluginVersion + " into project " + project.getArtifactId());
 
         Plugin plugin = new Plugin();
@@ -181,7 +184,12 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         plugin.setVersion(autoJdkPluginVersion);
 
         PluginExecution execution = new PluginExecution();
-        execution.setGoals(new ArrayList<>(Collections.singletonList("prepare"))); //Wrapped in ArrayList so later anyone using getter can modify list
+        List<String> goals = new ArrayList<>();
+        goals.add("prepare");
+        if (kotlinSupportRequired)
+            goals.add("kotlin-toolchain-bridge");
+
+        execution.setGoals(goals);
         plugin.addExecution(execution);
 
         //AutoJDK plugin needs to come before toolchains plugin so inject it at the top of the list
