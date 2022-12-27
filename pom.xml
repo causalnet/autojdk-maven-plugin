@@ -365,14 +365,38 @@
                 </configuration>
             </plugin>
 
+            <!--
+            We normally check in the OpenAPIs into our source control so this won't need to do anything,
+            but if this needs to be refreshed just delete the /openapi directory and this execution will refresh it
+            -->
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.6.8</version>
+                <executions>
+                    <execution>
+                        <id>download-disco-openapi</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <url>https://api.foojay.io/swagger/foojay-discoapi-3.0.yml</url>
+                    <outputDirectory>${project.basedir}/openapi</outputDirectory>
+                    <skipCache>true</skipCache>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
-                <version>6.0.1</version>
+                <version>6.2.1</version>
                 <executions>
                     <execution>
                         <configuration>
-                            <inputSpec>https://api.foojay.io/swagger/foojay-discoapi-3.0.yml</inputSpec>
+                            <inputSpec>${project.basedir}/openapi/foojay-discoapi-3.0.yml</inputSpec>
                             <generatorName>java</generatorName>
                             <skipValidateSpec>true</skipValidateSpec>
                             <library>native</library>
