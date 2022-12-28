@@ -17,7 +17,7 @@ public final class VersionTools
     }
 
     /**
-     * Returns whether a version specifies only a major version and nothing else.  e.g. "17" -> true, "17.0" -> false.
+     * Returns whether a version specifies only a major version and nothing else.  e.g. "17" -&gt; true, "17.0" -&gt; false.
      *
      * @param version the version to check.
      *
