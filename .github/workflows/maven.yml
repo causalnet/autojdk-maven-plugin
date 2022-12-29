@@ -27,8 +27,20 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
           cache: maven
+      - uses: actions/cache@v3
+        id: it-local-repo-cache
+        with:
+          path: it-local-repo
+          key: ${{ runner.os }}-it-local-repo-cache-${{ hashFiles('**/pom.xml') }} # Project POM + integration test POMs in src/it/**
+          restore-keys: |
+            ${{ runner.os }}-it-local-repo-cache-
       - name: Build with Maven
         run: mvn -B verify --file pom.xml
+      - name: Save integration test logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-logs
+          path: target/it/**/build.log
 
       # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
       - name: Update dependency graph
