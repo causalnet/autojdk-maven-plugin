@@ -1,6 +1,8 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.model.Plugin;
 import org.codehaus.plexus.util.StringUtils;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
@@ -19,14 +21,17 @@ public class CompilerPluginJavaDetector extends JavaVersionDetector
     public VersionRange detectJavaVersion(ProjectContext project)
     throws VersionDetectionException
     {
-        Xpp3Dom compilerConfig = project.readPluginConfiguration("org.apache.maven.plugins", "maven-compiler-plugin");
-        if (compilerConfig == null)
+        Plugin plugin = project.getProject().getPlugin("org.apache.maven.plugins:maven-compiler-plugin");
+        if (plugin == null)
             return null;
 
+        //config may be null if there is no configuration defined in the POM
+        Xpp3Dom compilerConfig = project.readPluginConfiguration(plugin);
+
         SortedSet<Integer> javaVersions = new TreeSet<>();
-        readJavaVersionFromCompilerPluginConfiguration(compilerConfig, "source", javaVersions);
-        readJavaVersionFromCompilerPluginConfiguration(compilerConfig, "target", javaVersions);
-        readJavaVersionFromCompilerPluginConfiguration(compilerConfig, "release", javaVersions);
+        readJavaVersionFromCompilerPlugin(project, compilerConfig, "source", "maven.compiler.source", javaVersions);
+        readJavaVersionFromCompilerPlugin(project, compilerConfig, "target", "maven.compiler.target", javaVersions);
+        readJavaVersionFromCompilerPlugin(project, compilerConfig, "release", "maven.compiler.release", javaVersions);
 
         //Pick the highest needed Java version
         if (javaVersions.isEmpty())
@@ -43,20 +48,61 @@ public class CompilerPluginJavaDetector extends JavaVersionDetector
      *
      * @param configuration the compiler plugin configuration.
      * @param configurationKey the configuration property name to read.
-     * @param versions a collection of versions that will receive the additional version that was read, if it could be read.  Otherwise this collection is untouched.
+     *
+     * @return the read compiler version.
      */
-    private void readJavaVersionFromCompilerPluginConfiguration(Xpp3Dom configuration, String configurationKey, Collection<? super Integer> versions)
+    private Integer getJavaVersionFromCompilerPluginConfiguration(Xpp3Dom configuration, String configurationKey)
     {
         Xpp3Dom element = configuration.getChild(configurationKey);
         if (element == null)
-            return;
+            return null;
 
         String version = element.getValue().trim();
         if (StringUtils.isEmpty(version))
-            return;
+            return null;
 
-        Integer majorVersion = attemptParseMajorJdkVersion(version);
-        if (majorVersion != null)
-            versions.add(majorVersion);
+        return attemptParseMajorJdkVersion(version);
+    }
+
+    /**
+     * Reads a version from a configuration value of the compiler plugin into a collection.
+     *
+     * @param project the project being read.
+     * @param configuration the compiler plugin configuration.
+     * @param configurationKey the configuration property name to read.
+     * @param fallbackProperty the system property used as a fallback if the value is not explicitly defined.
+     * @param versions a collection of versions that will receive the additional version that was read, if it could be read.  Otherwise this collection is untouched.
+     */
+    private void readJavaVersionFromCompilerPlugin(ProjectContext project, Xpp3Dom configuration, String configurationKey, String fallbackProperty, Collection<? super Integer> versions)
+    {
+        if (configuration != null)
+        {
+            Integer configVersion = getJavaVersionFromCompilerPluginConfiguration(configuration, configurationKey);
+            if (configVersion != null)
+            {
+                versions.add(configVersion);
+                return;
+            }
+        }
+
+        //Try to use property fallback
+        try
+        {
+            String fallbackValue = project.evaluateProjectProperty(fallbackProperty);
+            if (fallbackValue == null)
+                return;
+
+            String version = fallbackValue.trim();
+            if (StringUtils.isEmpty(version))
+                return;
+
+            Integer majorVersion = attemptParseMajorJdkVersion(version);
+            if (majorVersion != null)
+                versions.add(majorVersion);
+        }
+        catch (MavenExecutionException e)
+        {
+            //Failed to read property, so give up
+        }
     }
 }

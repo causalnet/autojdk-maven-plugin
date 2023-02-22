@@ -49,21 +49,26 @@ public class ProjectContext
         return autoJdkExtensionProperties;
     }
 
-    public Xpp3Dom readPluginConfiguration(String pluginGroupId, String pluginArtifactId)
+    public Xpp3Dom readPluginConfiguration(Plugin plugin)
     {
-        Plugin plugin = project.getPlugin(pluginGroupId + ":" + pluginArtifactId);
-        if (plugin == null)
-            return null;
-
         try
         {
             return configurationToXml(plugin.getConfiguration());
         }
         catch (IOException | XmlPullParserException e)
         {
-            log.warn("Failed to parse configuration XML for " + pluginGroupId + ":" + pluginArtifactId + ": " + e.getMessage(), e);
+            log.warn("Failed to parse configuration XML for " + plugin.getGroupId() + ":" + plugin.getArtifactId() + ": " + e.getMessage(), e);
             return null;
         }
+    }
+
+    public Xpp3Dom readPluginConfiguration(String pluginGroupId, String pluginArtifactId)
+    {
+        Plugin plugin = project.getPlugin(pluginGroupId + ":" + pluginArtifactId);
+        if (plugin == null)
+            return null;
+
+        return readPluginConfiguration(plugin);
     }
 
     public Xpp3Dom readExecutionConfiguration(String pluginGroupId, String pluginArtifactId, String executionName)
