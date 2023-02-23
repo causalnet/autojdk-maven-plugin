@@ -111,7 +111,7 @@ public abstract class JavaVersionDetector
      * @param project the project being read.
      * @param configuration the plugin configuration.
      * @param configurationKey the configuration property name to read.
-     * @param fallbackProperty the system property used as a fallback if the value is not explicitly defined in configuration.
+     * @param fallbackProperty the system property used as a fallback if the value is not explicitly defined in configuration.  May be null, in which case it is not used.
      * @param versions a collection of versions that will receive the additional version that was read, if it could be read.  Otherwise this collection is untouched.
      */
     protected static void readJavaVersionFromPlugin(ProjectContext project, Xpp3Dom configuration, String configurationKey, String fallbackProperty, Collection<? super Integer> versions)
@@ -127,23 +127,26 @@ public abstract class JavaVersionDetector
         }
 
         //Try to use property fallback
-        try
+        if (fallbackProperty != null)
         {
-            String fallbackValue = project.evaluateProjectProperty(fallbackProperty);
-            if (fallbackValue == null)
-                return;
+            try
+            {
+                String fallbackValue = project.evaluateProjectProperty(fallbackProperty);
+                if (fallbackValue == null)
+                    return;
 
-            String version = fallbackValue.trim();
-            if (StringUtils.isEmpty(version))
-                return;
+                String version = fallbackValue.trim();
+                if (StringUtils.isEmpty(version))
+                    return;
 
-            Integer majorVersion = attemptParseMajorJdkVersion(version);
-            if (majorVersion != null)
-                versions.add(majorVersion);
-        }
-        catch (MavenExecutionException e)
-        {
-            //Failed to read property, so give up
+                Integer majorVersion = attemptParseMajorJdkVersion(version);
+                if (majorVersion != null)
+                    versions.add(majorVersion);
+            }
+            catch (MavenExecutionException e)
+            {
+                //Failed to read property, so give up
+            }
         }
     }
 
