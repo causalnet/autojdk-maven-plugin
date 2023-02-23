@@ -1,7 +1,12 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import org.apache.maven.MavenExecutionException;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
+import org.codehaus.plexus.util.StringUtils;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
+
+import java.util.Collection;
 
 /**
  * For a given Maven project, detects the Java version that should be used.
@@ -53,7 +58,7 @@ public abstract class JavaVersionDetector
      *
      * @return the JDK major version number if it could be parsed, or null if the version string was not understood.
      */
-    public static Integer attemptParseMajorJdkVersion(String version)
+    protected static Integer attemptParseMajorJdkVersion(String version)
     {
         if (version == null)
             return null;
@@ -76,6 +81,69 @@ public abstract class JavaVersionDetector
         {
             //Ignore versions that don't parse into a number
             return null;
+        }
+    }
+
+    /**
+     * Reads a version from a configuration value of a plugin into a collection.
+     *
+     * @param configuration the plugin configuration.
+     * @param configurationKey the configuration property name to read.
+     *
+     * @return the read compiler version.
+     */
+    protected static Integer getJavaVersionFromPluginConfiguration(Xpp3Dom configuration, String configurationKey)
+    {
+        Xpp3Dom element = configuration.getChild(configurationKey);
+        if (element == null)
+            return null;
+
+        String version = element.getValue().trim();
+        if (StringUtils.isEmpty(version))
+            return null;
+
+        return attemptParseMajorJdkVersion(version);
+    }
+
+    /**
+     * Reads a version from a configuration value of a plugin into a collection.
+     *
+     * @param project the project being read.
+     * @param configuration the plugin configuration.
+     * @param configurationKey the configuration property name to read.
+     * @param fallbackProperty the system property used as a fallback if the value is not explicitly defined in configuration.
+     * @param versions a collection of versions that will receive the additional version that was read, if it could be read.  Otherwise this collection is untouched.
+     */
+    protected static void readJavaVersionFromPlugin(ProjectContext project, Xpp3Dom configuration, String configurationKey, String fallbackProperty, Collection<? super Integer> versions)
+    {
+        if (configuration != null)
+        {
+            Integer configVersion = getJavaVersionFromPluginConfiguration(configuration, configurationKey);
+            if (configVersion != null)
+            {
+                versions.add(configVersion);
+                return;
+            }
+        }
+
+        //Try to use property fallback
+        try
+        {
+            String fallbackValue = project.evaluateProjectProperty(fallbackProperty);
+            if (fallbackValue == null)
+                return;
+
+            String version = fallbackValue.trim();
+            if (StringUtils.isEmpty(version))
+                return;
+
+            Integer majorVersion = attemptParseMajorJdkVersion(version);
+            if (majorVersion != null)
+                versions.add(majorVersion);
+        }
+        catch (MavenExecutionException e)
+        {
+            //Failed to read property, so give up
         }
     }
 
