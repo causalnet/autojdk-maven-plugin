@@ -1,4 +1,4 @@
 /.idea
+/autojdk-maven-plugin.iml
 /target
 /it-local-repo
-
