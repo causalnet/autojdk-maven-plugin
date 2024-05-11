@@ -14,9 +14,6 @@
         <maven.version>3.8.6</maven.version>
         <java.version>11</java.version>
 
-        <!-- Recent enough so that it can run with all the way up to JDK 19 -->
-        <invoker.groovy.version>3.0.13</invoker.groovy.version>
-
         <!-- Local repository directory used for integration testing -->
         <it.local.repo>${project.basedir}/it-local-repo</it.local.repo>
     </properties>
@@ -71,7 +68,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
 
     <dependencies>
         <dependency>
@@ -234,7 +230,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-invoker-plugin</artifactId>
-                <version>3.3.0</version>
+                <version>3.6.1</version>
                 <configuration>
                     <cloneProjectsTo>${project.build.directory}/it</cloneProjectsTo>
                     <settingsFile>src/it/settings.xml</settingsFile>
@@ -258,27 +254,6 @@
                         <userHome>${project.build.directory}/it/userhome</userHome>
                     </scriptVariables>
                 </configuration>
-                <dependencies>
-                    <!-- Override with our own Groovy version for compatibility with more modern JDKs -->
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy</artifactId>
-                        <version>${invoker.groovy.version}</version>
-                        <scope>runtime</scope>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-json</artifactId>
-                        <version>${invoker.groovy.version}</version>
-                        <scope>runtime</scope>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.codehaus.groovy</groupId>
-                        <artifactId>groovy-xml</artifactId>
-                        <version>${invoker.groovy.version}</version>
-                        <scope>runtime</scope>
-                    </dependency>
-                </dependencies>
                 <executions>
                     <execution>
                         <id>integration-test</id>
