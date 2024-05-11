@@ -236,6 +236,9 @@
                     <settingsFile>src/it/settings.xml</settingsFile>
                     <localRepositoryPath>${it.local.repo}</localRepositoryPath>
                     <postBuildHookScript>verify</postBuildHookScript>
+                    <setupIncludes>
+                        <setupInclude>setup-*</setupInclude>
+                    </setupIncludes>
                     <pomIncludes>
                         <pomInclude>*</pomInclude>
                     </pomIncludes>
