@@ -42,10 +42,7 @@
                         <goals>
                             <goal>clean</goal>
                         </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${user.home}/.wiremock/ca-keystore.jks</keystore>
-                        </configuration>
+                        <phase>validate</phase>
                     </execution>
                     <execution>
                         <id>generate-ca</id>
@@ -54,7 +51,6 @@
                         </goals>
                         <phase>validate</phase>
                         <configuration>
-                            <keystore>${user.home}/.wiremock/ca-keystore.jks</keystore>
                             <alias>wiremock-ca</alias>
                             <dname>CN=wiremock-ca</dname>
                             <arguments>
@@ -65,21 +61,6 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!--
-                    <execution>
-                        <id>export-ca</id>
-                        <goals>
-                            <goal>exportCertificate</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${project.build.directory}/ssl-ca.p12</keystore>
-                            <alias>ca</alias>
-                            <file>${project.build.directory}/ssl-ca.crt</file>
-                            <rfc>true</rfc>
-                        </configuration>
-                    </execution>
-                    -->
                     <execution>
                         <id>generate-foojay-key</id>
                         <goals>
@@ -87,7 +68,6 @@
                         </goals>
                         <phase>validate</phase>
                         <configuration>
-                            <keystore>${user.home}/.wiremock/ca-keystore.jks</keystore>
                             <alias>api.foojay.io</alias>
                             <dname>cn=api.foojay.io</dname>
                             <arguments>
@@ -102,68 +82,15 @@
                             </arguments>
                         </configuration>
                     </execution>
-                    <!--
-                    <execution>
-                        <id>generate-csr</id>
-                        <goals>
-                            <goal>generateCertificateRequest</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${project.build.directory}/ssl-server.p12</keystore>
-                            <alias>tomcat</alias>
-                            <file>${project.build.directory}/ssl-server.csr</file>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>issue-cert-from-ca</id>
-                        <goals>
-                            <goal>generateCertificate</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${project.build.directory}/ssl-ca.p12</keystore>
-                            <alias>ca</alias>
-                            <infile>${project.build.directory}/ssl-server.csr</infile>
-                            <outfile>${project.build.directory}/ssl-server.crt</outfile>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>import-root-ca-into-server-keystore</id>
-                        <goals>
-                            <goal>importCertificate</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${project.build.directory}/ssl-server.p12</keystore>
-                            <alias>ca</alias>
-                            <trustcacerts>true</trustcacerts>
-                            <file>${project.build.directory}/ssl-ca.crt</file>
-                            <noprompt>true</noprompt>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>import-signed-cert-into-server-keystore</id>
-                        <goals>
-                            <goal>importCertificate</goal>
-                        </goals>
-                        <phase>pre-integration-test</phase>
-                        <configuration>
-                            <keystore>${project.build.directory}/ssl-server.p12</keystore>
-                            <alias>tomcat</alias>
-                            <trustcacerts>true</trustcacerts>
-                            <file>${project.build.directory}/ssl-server.crt</file>
-                            <noprompt>true</noprompt>
-                        </configuration>
-                    </execution>
-                    -->
                 </executions>
                 <configuration>
+                    <keystore>${user.home}/.wiremock/ca-keystore.jks</keystore>
                     <storepass>password</storepass>
                     <validity>700</validity>
                     <keyalg>RSA</keyalg>
                     <keysize>2048</keysize>
                     <storetype>JKS</storetype>
+                    <skip>${autojdk.it.keytool.skip}</skip>
                 </configuration>
             </plugin>
 
@@ -239,6 +166,17 @@
         </plugins>
     </build>
     <profiles>
+        <!-- Java < 17 does not need to use keytool to generate wiremock certificates so we can skip that part -->
+        <profile>
+            <id>jdkpre17</id>
+            <activation>
+                <jdk>[,17)</jdk>
+            </activation>
+            <properties>
+                <autojdk.it.keytool.skip>true</autojdk.it.keytool.skip>
+            </properties>
+        </profile>
+
         <!-- Define in an active-by-default profile so we can skip it if we need to by disabling this profile -->
         <profile>
             <id>toolchainsProfile</id>
