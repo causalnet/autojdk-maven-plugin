@@ -181,7 +181,9 @@
         <profile>
             <id>toolchainsProfile</id>
             <activation>
-                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>!disableToolchains</name>
+                </property>
             </activation>
             <build>
                 <plugins>
