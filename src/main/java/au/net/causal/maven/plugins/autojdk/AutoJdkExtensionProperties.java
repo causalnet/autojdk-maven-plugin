@@ -18,12 +18,14 @@ public class AutoJdkExtensionProperties
     private final String jdkVendor;
     private final String jdkVersion;
     private final Path autoJdkConfigFile;
+    private final Boolean skip;
 
-    public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion, Path autoJdkConfigFile)
+    public AutoJdkExtensionProperties(String jdkVendor, String jdkVersion, Path autoJdkConfigFile, Boolean skip)
     {
         this.jdkVendor = jdkVendor;
         this.jdkVersion = jdkVersion;
         this.autoJdkConfigFile = autoJdkConfigFile;
+        this.skip = skip;
     }
 
     /**
@@ -37,8 +39,9 @@ public class AutoJdkExtensionProperties
         {
             String vendor = (String) evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VENDOR + "}", String.class);
             String version = (String) evaluator.evaluate("${" + PrepareMojo.PROPERTY_JDK_VERSION + "}", String.class);
-            String autoJdkConfigFile = (String) evaluator.evaluate("${" + PrepareMojo.PROPERTY_AUTOJDK_CONFIGURATION_FILE + "}", File.class);
-            return new AutoJdkExtensionProperties(vendor, version, autoJdkConfigFile == null ? null : Paths.get(autoJdkConfigFile));
+            String autoJdkConfigFile = (String) evaluator.evaluate("${" + PrepareMojo.PROPERTY_AUTOJDK_CONFIGURATION_FILE + "}", File.class); //TODO check this
+            boolean skip = Boolean.parseBoolean((String) evaluator.evaluate("${" + PrepareMojo.PROPERTY_AUTOJDK_SKIP + "}", Boolean.class));
+            return new AutoJdkExtensionProperties(vendor, version, autoJdkConfigFile == null ? null : Paths.get(autoJdkConfigFile), skip);
         }
         catch (ExpressionEvaluationException e)
         {

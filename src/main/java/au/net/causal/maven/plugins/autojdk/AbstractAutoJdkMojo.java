@@ -38,6 +38,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     static final String PROPERTY_JDK_VERSION = "autojdk.jdk.version";
     static final String PROPERTY_JDK_RELEASE_TYPE = "autojdk.jdk.releaseType";
     static final String PROPERTY_AUTOJDK_CONFIGURATION_FILE = "autojdk.config.file";
+    static final String PROPERTY_AUTOJDK_SKIP = "autojdk.skip";
 
     @Component
     private RepositorySystem repositorySystem;
@@ -86,7 +87,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     /**
      * If true, skip execution of autojdk plugin.
      */
-    @Parameter(property="autojdk.skip", defaultValue = "false")
+    @Parameter(property=PROPERTY_AUTOJDK_SKIP, defaultValue = "false")
     protected boolean skip;
 
     private AutoJdk autoJdk;
