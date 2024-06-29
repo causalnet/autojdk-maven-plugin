@@ -32,7 +32,7 @@ class DiscoReal
     {
         FoojayClient client = new FoojayClient();
 
-        List<? extends JdkPackage> results = client.getJdkPackages(null, 11, null, null, List.of(Architecture.X64), null, List.of(ArchiveType.ZIP, ArchiveType.TAR_GZ), List.of(OperatingSystem.WINDOWS), null, null, List.of(ReleaseStatus.GA, ReleaseStatus.EA), null, null,
+        List<? extends JdkPackage> results = client.getJdkPackages(null, 6, null, null, List.of(Architecture.X64), null, List.of(ArchiveType.ZIP, ArchiveType.TAR_GZ), List.of(OperatingSystem.WINDOWS, OperatingSystem.LINUX), null, null, List.of(ReleaseStatus.GA, ReleaseStatus.EA), null, null,
                                                                    Latest.ALL_OF_VERSION, null, true, null, null, null);
 
 
@@ -63,7 +63,7 @@ class DiscoReal
     {
         FoojayClient client = new FoojayClient();
 
-        List<? extends MajorVersion> result = client.getAllMajorVersions(null, null, null, null, null, null, false);
+        List<? extends MajorVersion> result = client.getAllMajorVersions();
 
         System.out.println(result);
     }

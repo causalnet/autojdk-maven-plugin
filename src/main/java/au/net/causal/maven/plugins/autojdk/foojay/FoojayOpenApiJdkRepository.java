@@ -262,7 +262,7 @@ public class FoojayOpenApiJdkRepository implements JdkArchiveRepository<FoojayOp
     {
         try
         {
-            return foojayClient.getAllMajorVersions(null, null, null, false, null, null, null);
+            return foojayClient.getAllMajorVersions();
         }
         catch (ApiException e)
         {

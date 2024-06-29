@@ -19,6 +19,7 @@ public class JdkDistribution
     private String name;
     private String apiParameter;
     private final List<String> synonyms = new ArrayList<>();
+    private final List<String> versions = new ArrayList<>();
 
     @JsonAnySetter
     private final Map<String, Object> otherProperties = new LinkedHashMap<>();
@@ -52,6 +53,17 @@ public class JdkDistribution
     {
         this.synonyms.clear();
         this.synonyms.addAll(synonyms);
+    }
+
+    public List<String> getVersions()
+    {
+        return versions;
+    }
+
+    public void setVersions(List<String> versions)
+    {
+        this.versions.clear();
+        this.versions.addAll(versions);
     }
 
     @JsonAnyGetter

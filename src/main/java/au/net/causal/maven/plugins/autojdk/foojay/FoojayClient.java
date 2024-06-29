@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk.foojay;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.DefaultApi;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.annotations.VisibleForTesting;
@@ -86,18 +87,44 @@ public class FoojayClient
             return typedResponse.getResult();
     }
 
-    public List<? extends MajorVersion> getAllMajorVersions(
-            Boolean ea,
-            Boolean ga,
-            Boolean maintained,
-            Boolean includeBuild,
-            List<String> discoveryScopeId,
-            String match,
-            Boolean includeVersions
-    )
+    private List<? extends MajorVersion> getAllMajorVersionsUsingFallback()
     throws ApiException
     {
-        Object rawResponse = api.getAllMajorVersionsV3(ea, ga, maintained, includeBuild, discoveryScopeId, match, includeVersions);
+        List<? extends JdkDistribution> results = getDistributions(true, false, null);
+        return results.stream()
+                .flatMap(d -> d.getVersions().stream())
+                .map(v -> FoojayOpenApiArtifact.mavenSafeVersionFromPkgVersion(v).getMajorVersion())
+                .distinct()
+                .sorted()
+                .map(this::createMajorVersion)
+                .collect(Collectors.toList());
+    }
+
+    private MajorVersion createMajorVersion(int majorVersionNumber)
+    {
+        MajorVersion mv = new MajorVersion();
+        mv.setMajorVersion(majorVersionNumber);
+        return mv;
+    }
+
+    public List<? extends MajorVersion> getAllMajorVersions()
+    throws ApiException
+    {
+        Object rawResponse;
+        try
+        {
+            rawResponse = api.getAllMajorVersionsV3(null, null, null, false, null, null, null);
+        }
+        catch (ApiException e)
+        {
+            if (e.getCause() instanceof JsonParseException)
+            {
+                //Foojay service has issues with getAllMajorVersions at times, fallback to parsing major versions from distributions
+                return getAllMajorVersionsUsingFallback();
+            }
+            throw e;
+        }
+
 
         MajorVersionsResponse typedResponse = apiClient.getObjectMapper().convertValue(rawResponse, MajorVersionsResponse.class);
 
