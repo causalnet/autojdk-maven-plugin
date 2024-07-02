@@ -2,7 +2,9 @@ package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
 import jakarta.xml.bind.JAXB;
+import jakarta.xml.bind.JAXBException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +12,8 @@ import javax.xml.datatype.DatatypeFactory;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -144,14 +148,39 @@ class TestAutoJdkConfiguration
     }
 
     @Test
-    void fillInDefaults()
+    void fillInDefaults(@TempDir Path tempDir)
+    throws Exception
     {
-        AutoJdkConfiguration configuration = new AutoJdkConfiguration();
-        configuration.setVendors(List.of("zulu", AutoJdkConfiguration.WILDCARD_VENDOR));
-        configuration.fillInDefaultValues();
+        String xml =
+                "<autojdk-configuration><vendors>" +
+                "    <vendor>zulu</vendor>" +
+                "    <vendor>*</vendor>" +
+                "</vendors></autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager());
 
         assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
         assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
         assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void cascade()
+    {
+        AutoJdkConfiguration c1 = new AutoJdkConfiguration();
+        c1.setVendors(List.of("zulu", "temurin", "*"));
+        c1.setExtensionExclusions(List.of(new ExtensionExclusion("(,8)", "[8, 9)")));
+
+        AutoJdkConfiguration c2 = new AutoJdkConfiguration();
+        c2.setVendors(List.of("zulu", "*"));
+        c2.setJdkUpdatePolicy(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.Always()));
+
+        AutoJdkConfiguration combined = c1.combinedWith(c2);
+
+        assertThat(combined.getVendors()).containsExactly("zulu", "*"); //prefer c2
+        assertThat(combined.getJdkUpdatePolicy()).isEqualTo(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.Always())); //only defined in c2
+        assertThat(combined.getExtensionExclusions()).isEqualTo(List.of(new ExtensionExclusion("(,8)", "[8, 9)"))); //only defined in c1
     }
 }

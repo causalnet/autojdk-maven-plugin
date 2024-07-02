@@ -264,7 +264,8 @@ class TestAutoJdk
         void preferredVendorSortingSpecified()
         {
             AutoJdk autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget, Collections.singleton(jdkArchiveRepository), StandardVersionTranslationScheme.UNMODIFIED,
-                                          new AutoJdkConfiguration(List.of(
+                                          new AutoJdkConfiguration(Collections.emptyList(),
+                                               List.of(
                                                   "galahjdk", //galahjdk is preferred
                                                   AutoJdkConfiguration.WILDCARD_VENDOR, //all unknowns
                                                   "zzzcockatoojdk"), //cockatoo jdk is preferred even less than unknowns
