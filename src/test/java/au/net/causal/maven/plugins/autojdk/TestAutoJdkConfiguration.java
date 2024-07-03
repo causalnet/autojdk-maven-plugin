@@ -1,8 +1,17 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
+import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import jakarta.xml.bind.JAXB;
-import jakarta.xml.bind.JAXBException;
+import org.apache.maven.execution.DefaultMavenExecutionRequest;
+import org.apache.maven.execution.MavenExecutionRequest;
+import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.path.DefaultPathTranslator;
+import org.apache.maven.model.path.ProfileActivationFilePathInterpolator;
+import org.apache.maven.model.profile.activation.FileProfileActivator;
+import org.apache.maven.model.profile.activation.JdkVersionProfileActivator;
+import org.apache.maven.model.profile.activation.OperatingSystemProfileActivator;
+import org.apache.maven.model.profile.activation.PropertyProfileActivator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
@@ -19,6 +28,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.*;
 
@@ -159,7 +169,7 @@ class TestAutoJdkConfiguration
         Path configFile = tempDir.resolve("config.xml");
         Files.writeString(configFile, xml);
 
-        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager());
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
 
         assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
         assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
@@ -182,5 +192,153 @@ class TestAutoJdkConfiguration
         assertThat(combined.getVendors()).containsExactly("zulu", "*"); //prefer c2
         assertThat(combined.getJdkUpdatePolicy()).isEqualTo(new AutoJdkConfiguration.JdkUpdatePolicySpec(new JdkUpdatePolicy.Always())); //only defined in c2
         assertThat(combined.getExtensionExclusions()).isEqualTo(List.of(new ExtensionExclusion("(,8)", "[8, 9)"))); //only defined in c1
+    }
+
+    @Test
+    void activationBySystemPropertySuccess(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <property>" +
+                "            <name>galahProperty</name>" +
+                "            <value>myValue</value>" +
+                "        </property>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("galahProperty", "myValue");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationBySystemPropertyNotIncluded(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <property>" +
+                "            <name>galahProperty</name>" +
+                "            <value>myValue</value>" +
+                "        </property>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("galahProperty", "someOtherValue");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        //Everything should be at defaults because config file was not activated
+        assertThat(configuration.getVendors()).isEqualTo(AutoJdkConfiguration.DEFAULT_VENDORS);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationByFileExistSuccess(@TempDir Path tempDir)
+    throws Exception
+    {
+        //Write the file we are looking for
+        Path galahFile = tempDir.resolve("galahfile.txt");
+        Files.createFile(galahFile);
+
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <file>" +
+                "            <exists>" + galahFile.toAbsolutePath() + "</exists>" +
+                "        </file>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("galahProperty", "myValue");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationByFileExistNotIncluded(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <file>" +
+                "            <exists>idonotexist.txt</exists>" +
+                "        </file>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("galahProperty", "myValue");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        //Everything should be at defaults because config file was not activated
+        assertThat(configuration.getVendors()).isEqualTo(AutoJdkConfiguration.DEFAULT_VENDORS);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    private static ActivationProcessor createActivationProcessor()
+    {
+        FileProfileActivator fileProfileActivator = new FileProfileActivator();
+        ProfileActivationFilePathInterpolator profileActivationFilePathInterpolator = new ProfileActivationFilePathInterpolator();
+        profileActivationFilePathInterpolator.setPathTranslator(new DefaultPathTranslator());
+        fileProfileActivator.setProfileActivationFilePathInterpolator(profileActivationFilePathInterpolator);
+        return new ActivationProcessor(fileProfileActivator, new OperatingSystemProfileActivator(), new PropertyProfileActivator(), new JdkVersionProfileActivator(), "1.0-SNAPSHOT");
+    }
+
+    private static MavenSession createMavenSession()
+    {
+        return createMavenSession(new DefaultMavenExecutionRequest());
+    }
+
+    private static MavenSession createMavenSession(MavenExecutionRequest executionRequest)
+    {
+        @SuppressWarnings("deprecation") MavenSession session = new MavenSession(null, executionRequest, null, List.of());
+        return session;
     }
 }

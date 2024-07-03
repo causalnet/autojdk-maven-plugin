@@ -2,6 +2,8 @@ package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
 import au.net.causal.maven.plugins.autojdk.ExtensionExclusionProcessor.ExclusionProcessorException;
+import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
+import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.AbstractMavenLifecycleParticipant;
 import org.apache.maven.MavenExecutionException;
@@ -10,6 +12,12 @@ import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
+import org.apache.maven.model.path.DefaultPathTranslator;
+import org.apache.maven.model.path.ProfileActivationFilePathInterpolator;
+import org.apache.maven.model.profile.activation.FileProfileActivator;
+import org.apache.maven.model.profile.activation.JdkVersionProfileActivator;
+import org.apache.maven.model.profile.activation.OperatingSystemProfileActivator;
+import org.apache.maven.model.profile.activation.PropertyProfileActivator;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
@@ -70,10 +78,19 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
 
             log.debug("AutoJDK config file: " + autoJdkConfigFile.toAbsolutePath());
 
+            FileProfileActivator fileProfileActivator = new FileProfileActivator();
+            if (classExists("org.apache.maven.model.path.ProfileActivationFilePathInterpolator")) //Needed for Maven < 3.8
+            {
+                ProfileActivationFilePathInterpolator profileActivationFilePathInterpolator = new ProfileActivationFilePathInterpolator();
+                profileActivationFilePathInterpolator.setPathTranslator(new DefaultPathTranslator());
+                fileProfileActivator.setProfileActivationFilePathInterpolator(profileActivationFilePathInterpolator);
+            }
+            ActivationProcessor activationProcessor = new ActivationProcessor(fileProfileActivator, new OperatingSystemProfileActivator(), new PropertyProfileActivator(), new JdkVersionProfileActivator(), lookupAutoJdkPluginVersion());
+
             AutoJdkXmlManager xmlManager = new AutoJdkXmlManager();
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigFile, xmlManager);
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigFile, xmlManager, activationProcessor, session);
         }
-        catch (AutoJdkXmlManager.XmlParseException | JAXBException e)
+        catch (AutoJdkXmlManager.XmlParseException | JAXBException | AutoJdkConfigurationException e)
         {
             throw new MavenExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }
@@ -81,6 +98,19 @@ public class AutoJdkInjectorExtension extends AbstractMavenLifecycleParticipant
         for (MavenProject project : session.getProjects())
         {
             processProject(project, session, extensionProperties, autoJdkConfiguration);
+        }
+    }
+
+    private static boolean classExists(String className)
+    {
+        try
+        {
+            Class.forName(className, false, AutoJdkInjectorExtension.class.getClassLoader());
+            return true;
+        }
+        catch (ClassNotFoundException e)
+        {
+            return false;
         }
     }
 

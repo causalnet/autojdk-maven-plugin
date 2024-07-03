@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
+import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
 import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiVendorService;
@@ -8,9 +10,14 @@ import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.model.profile.activation.FileProfileActivator;
+import org.apache.maven.model.profile.activation.JdkVersionProfileActivator;
+import org.apache.maven.model.profile.activation.OperatingSystemProfileActivator;
+import org.apache.maven.model.profile.activation.PropertyProfileActivator;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
@@ -43,11 +50,26 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     @Component
     private RepositorySystem repositorySystem;
 
+    @Component
+    private FileProfileActivator fileProfileActivator;
+
+    @Component
+    private OperatingSystemProfileActivator operatingSystemProfileActivator;
+
+    @Component
+    private PropertyProfileActivator propertyProfileActivator;
+
+    @Component
+    private JdkVersionProfileActivator jdkVersionProfileActivator;
+
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
     private RepositorySystemSession repoSession;
 
     @Parameter(defaultValue = "${project.remotePluginRepositories}", readonly = true)
     protected List<RemoteRepository> remoteRepositories;
+
+    @Parameter( defaultValue = "${plugin}", required = true, readonly = true )
+    private PluginDescriptor pluginDescriptor;
 
     @Parameter(defaultValue = "${project}", readonly = true)
     protected MavenProject project;
@@ -135,14 +157,19 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
             throw new MojoExecutionException("Error initializing JAXB: " + e, e);
         }
 
+        String autoJdkPluginVersion = pluginDescriptor.getVersion();
+        ActivationProcessor activationProcessor = new ActivationProcessor(
+                fileProfileActivator, operatingSystemProfileActivator, propertyProfileActivator, jdkVersionProfileActivator, autoJdkPluginVersion
+        );
+
         AutoJdkInstalledJdkSystem localJdkResolver = new AutoJdkInstalledJdkSystem(autojdkHome.getLocalJdksDirectory(), xmlManager);
 
         AutoJdkConfiguration autoJdkConfiguration;
         try
         {
-            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigurationFile.toPath(), xmlManager);
+            autoJdkConfiguration = AutoJdkConfiguration.fromFile(autoJdkConfigurationFile.toPath(), xmlManager, activationProcessor, session);
         }
-        catch (AutoJdkXmlManager.XmlParseException e)
+        catch (AutoJdkXmlManager.XmlParseException | AutoJdkConfigurationException e)
         {
             throw new MojoExecutionException("Error reading " + autojdkHome.getAutoJdkConfigurationFile() + ": " + e.getMessage(), e);
         }

@@ -1,10 +1,17 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.config.Activation;
+import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
+import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
+import au.net.causal.maven.plugins.autojdk.config.CombinableConfiguration;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlType;
+import org.apache.maven.execution.MavenSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.xml.datatype.DatatypeConstants;
 import javax.xml.datatype.DatatypeFactory;
@@ -21,7 +28,7 @@ import java.util.stream.Collectors;
  */
 @XmlRootElement(name = "autojdk-configuration")
 @XmlType(propOrder={})
-public class AutoJdkConfiguration
+public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConfiguration>
 {
     /**
      * Special vendor name that can be used to substitute any other known vendor that is not already in the list.
@@ -44,6 +51,7 @@ public class AutoJdkConfiguration
      * Default JDK update policy duration of 1 day.
      */
     static final JdkUpdatePolicySpec DEFAULT_JDK_UPDATE_POLICY = new JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED)));
+    private static final Logger log = LoggerFactory.getLogger(AutoJdkConfiguration.class);
 
     //Method instead of variable since extension exclusion element is mutable
     static List<ExtensionExclusion> defaultExtensionExclusions()
@@ -51,24 +59,26 @@ public class AutoJdkConfiguration
         return List.of(new ExtensionExclusion("(,8)", "[8,9)"));
     }
 
-    private final List<String> imports = new ArrayList<>();
+    private Activation activation;
+    private final List<String> includes = new ArrayList<>();
     private final List<String> vendors = new ArrayList<>();
     private final List<ExtensionExclusion> extensionExclusions = new ArrayList<>();
     private JdkUpdatePolicySpec jdkUpdatePolicy;
 
     public static AutoJdkConfiguration defaultAutoJdkConfiguration()
     {
-        return new AutoJdkConfiguration(Collections.emptyList(), DEFAULT_VENDORS, defaultExtensionExclusions(), DEFAULT_JDK_UPDATE_POLICY);
+        return new AutoJdkConfiguration(null, Collections.emptyList(), DEFAULT_VENDORS, defaultExtensionExclusions(), DEFAULT_JDK_UPDATE_POLICY);
     }
 
     public AutoJdkConfiguration()
     {
-        this(Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null);
+        this(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null);
     }
 
-    public AutoJdkConfiguration(List<String> imports, List<String> vendors, List<ExtensionExclusion> extensionExclusions, JdkUpdatePolicySpec jdkUpdatePolicy)
+    public AutoJdkConfiguration(Activation activation, List<String> includes, List<String> vendors, List<ExtensionExclusion> extensionExclusions, JdkUpdatePolicySpec jdkUpdatePolicy)
     {
-        this.imports.addAll(imports);
+        this.activation = activation;
+        this.includes.addAll(includes);
         this.vendors.addAll(vendors);
         this.extensionExclusions.addAll(extensionExclusions);
         this.jdkUpdatePolicy = jdkUpdatePolicy;
@@ -78,16 +88,28 @@ public class AutoJdkConfiguration
      * List of additional configuration files to import.
      */
     @XmlElementWrapper
-    @XmlElement(name = "import")
-    public List<String> getImports()
+    @XmlElement(name = "include")
+    @Override
+    public List<String> getIncludes()
     {
-        return imports;
+        return includes;
     }
 
-    public void setImports(List<String> imports)
+    public void setIncludes(List<String> includes)
     {
-        this.imports.clear();
-        this.imports.addAll(imports);
+        this.includes.clear();
+        this.includes.addAll(includes);
+    }
+
+    @Override
+    public Activation getActivation()
+    {
+        return activation;
+    }
+
+    public void setActivation(Activation activation)
+    {
+        this.activation = activation;
     }
 
     /**
@@ -157,43 +179,47 @@ public class AutoJdkConfiguration
         return combined;
     }
 
-    public static AutoJdkConfiguration fromFile(Path file, AutoJdkXmlManager xmlManager)
-    throws AutoJdkXmlManager.XmlParseException
+    public static AutoJdkConfiguration fromFile(Path file, AutoJdkXmlManager xmlManager, ActivationProcessor activationProcessor, MavenSession session)
+    throws AutoJdkXmlManager.XmlParseException, AutoJdkConfigurationException
     {
         //If no config file is present just use the default settings
         if (Files.notExists(file))
             return AutoJdkConfiguration.defaultAutoJdkConfiguration();
 
         AutoJdkConfiguration configFromFile = xmlManager.parseFile(file, AutoJdkConfiguration.class);
-        List<Path> importFiles = configFromFile.resolveImportFiles(file.getParent());
 
         //Start with defaults
         var fullConfig = defaultAutoJdkConfiguration();
 
-        //Resolve/apply imports
-        for (Path importFile : importFiles)
+        //Check if we should process this file at all
+        if (configFromFile.getActivation() == null || activationProcessor.isActive(configFromFile.getActivation(), session))
         {
-            //Ignore files that are specified as import but do not exist
-            if (Files.exists(importFile))
-            {
-                AutoJdkConfiguration importConfig = fromFile(importFile, xmlManager);
-                //TODO conditionals and namespace checking
-                fullConfig = fullConfig.combinedWith(importConfig);
+            List<Path> includeFiles = configFromFile.resolveIncludeFiles(file);
+
+            //Resolve/apply imports
+            for (Path includeFile : includeFiles) {
+                //Ignore files that are specified as import but do not exist
+                if (Files.exists(includeFile)) {
+                    AutoJdkConfiguration includeConfig = fromFile(includeFile, xmlManager, activationProcessor, session);
+
+                    if (includeConfig.getActivation() == null || activationProcessor.isActive(includeConfig.getActivation(), session))
+                        fullConfig = fullConfig.combinedWith(includeConfig);
+                }
             }
+
+            fullConfig = fullConfig.combinedWith(configFromFile);
         }
 
-        fullConfig = fullConfig.combinedWith(configFromFile);
-
         //Imports are now resolved so remove them
-        fullConfig.setImports(List.of());
+        fullConfig.setIncludes(List.of());
 
         return fullConfig;
     }
 
-    private List<Path> resolveImportFiles(Path base)
+    private List<Path> resolveIncludeFiles(Path baseConfigFile)
     {
-        return getImports().stream()
-                .map(base::resolve)
+        return getIncludes().stream()
+                .map(baseConfigFile::resolveSibling)
                 .collect(Collectors.toList());
     }
 

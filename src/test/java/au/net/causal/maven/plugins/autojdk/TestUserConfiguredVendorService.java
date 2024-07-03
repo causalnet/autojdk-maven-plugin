@@ -23,7 +23,7 @@ class TestUserConfiguredVendorService
     void allVendors()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> vendors = vendorService.getAllVendors();
@@ -40,7 +40,7 @@ class TestUserConfiguredVendorService
     void somePreferred()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(
                 "zulu",
                 "liberica",
                 AutoJdkConfiguration.WILDCARD_VENDOR
@@ -64,7 +64,7 @@ class TestUserConfiguredVendorService
     void extraVendorsNotInDisco()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(
                 "zulu",
                 "galah",
                 "liberica",
@@ -89,7 +89,7 @@ class TestUserConfiguredVendorService
     void noWildcard()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(
                 "zulu",
                 "liberica"
         ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
@@ -110,7 +110,7 @@ class TestUserConfiguredVendorService
     void multipleWildcards()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(
                 "zulu",
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 AutoJdkConfiguration.WILDCARD_VENDOR
@@ -137,7 +137,7 @@ class TestUserConfiguredVendorService
     void wildcardNotAtEnd()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(
                 AutoJdkConfiguration.WILDCARD_VENDOR,
                 "liberica"
         ), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
@@ -163,7 +163,7 @@ class TestUserConfiguredVendorService
     void ensureAllDefaultVendorsAreRealVendors()
     throws VendorServiceException
     {
-        AutoJdkConfiguration config = new AutoJdkConfiguration(List.of(), List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
+        AutoJdkConfiguration config = new AutoJdkConfiguration(null, List.of(), List.of(AutoJdkConfiguration.WILDCARD_VENDOR), List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY);
         VendorService vendorService = new UserConfiguredVendorService(sourceVendorService, config);
 
         List<String> knownVendors = vendorService.getAllVendors();

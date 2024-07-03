@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import jakarta.xml.bind.annotation.XmlType;
+
 /**
  * Controls how a configuration will be processed based on some conditions.  If more than one condition is specified, all conditions must match for activation to occur.
  */
@@ -81,6 +83,7 @@ public class Activation
     /**
      * Operating system attributes used for matching.
      */
+    @XmlType(name = "ActivationOperatingSystem")
     public static class OperatingSystem
     {
         private String name;
@@ -149,6 +152,8 @@ public class Activation
         private String name;
         private String value;
 
+        //TODO name is mandatory
+
         /**
          * The name of the property that must exist for activation.
          */
@@ -183,6 +188,8 @@ public class Activation
     {
         private String missing;
         private String exists;
+
+        //TODO XML choice
 
         /**
          * The name of the file that must be missing for activation.
