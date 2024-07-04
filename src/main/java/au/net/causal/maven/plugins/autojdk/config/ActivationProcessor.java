@@ -74,10 +74,7 @@ public class ActivationProcessor
         //Generate a fake profile to re-use Maven's classes to check
         Profile profile = new Profile();
         org.apache.maven.model.Activation mavenActivation = new org.apache.maven.model.Activation();
-        ActivationFile mavenActivationFile = new ActivationFile();
-        mavenActivationFile.setExists(fileActivation.getExists());
-        mavenActivationFile.setMissing(fileActivation.getMissing());
-        mavenActivation.setFile(mavenActivationFile);
+        mavenActivation.setFile(fileActivation.getFileActivationType().toMavenActivationFile());
         profile.setActivation(mavenActivation);
 
         return checkIsActiveUsingMavenProfileActivator(fileProfileActivator, profile, session);

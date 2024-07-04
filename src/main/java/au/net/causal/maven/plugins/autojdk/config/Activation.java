@@ -1,7 +1,10 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
 import jakarta.xml.bind.annotation.XmlElement;
+import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlType;
+import jakarta.xml.bind.annotation.XmlValue;
+import org.apache.maven.model.ActivationFile;
 
 /**
  * Controls how a configuration will be processed based on some conditions.  If more than one condition is specified, all conditions must match for activation to occur.
@@ -188,35 +191,100 @@ public class Activation
      */
     public static class FileActivation
     {
-        private String missing;
-        private String exists;
+        private FileActivationType fileActivationType;
 
-        //TODO XML choice
-
-        /**
-         * The name of the file that must be missing for activation.
-         */
-        public String getMissing()
+        public FileActivation()
         {
-            return missing;
         }
 
-        public void setMissing(String missing)
+        public FileActivation(FileActivationType fileActivationType)
         {
-            this.missing = missing;
+            this.fileActivationType = fileActivationType;
         }
 
-        /**
-         * The name of the file that must exist for activation.
-         */
-        public String getExists()
+        @XmlElements({
+                @XmlElement(name = "exists", type = FileActivationType.Exists.class, required = true),
+                @XmlElement(name = "missing", type = FileActivationType.Missing.class, required = true)
+        })
+        public FileActivationType getFileActivationType()
         {
-            return exists;
+            return fileActivationType;
         }
 
-        public void setExists(String exists)
+        public void setFileActivationType(FileActivationType fileActivationType)
         {
-            this.exists = exists;
+            this.fileActivationType = fileActivationType;
+        }
+    }
+
+    public static interface FileActivationType
+    {
+        public ActivationFile toMavenActivationFile();
+
+        public static class Exists implements FileActivationType
+        {
+            private String exists;
+
+            public Exists()
+            {
+            }
+
+            public Exists(String exists)
+            {
+                this.exists = exists;
+            }
+
+            @XmlValue
+            public String getExists()
+            {
+                return exists;
+            }
+
+            public void setExists(String exists)
+            {
+                this.exists = exists;
+            }
+
+            @Override
+            public ActivationFile toMavenActivationFile()
+            {
+                ActivationFile mavenActivation = new ActivationFile();
+                mavenActivation.setExists(getExists());
+                return mavenActivation;
+            }
+        }
+
+        public static class Missing implements FileActivationType
+        {
+            private String missing;
+
+            public Missing()
+            {
+            }
+
+            public Missing(String missing)
+            {
+                this.missing = missing;
+            }
+
+            @XmlValue
+            public String getMissing()
+            {
+                return missing;
+            }
+
+            public void setMissing(String missing)
+            {
+                this.missing = missing;
+            }
+
+            @Override
+            public ActivationFile toMavenActivationFile()
+            {
+                ActivationFile mavenActivation = new ActivationFile();
+                mavenActivation.setMissing(getMissing());
+                return mavenActivation;
+            }
         }
     }
 }

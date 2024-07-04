@@ -72,9 +72,7 @@ class TestActivationProcessor
 
             MavenSession session = createMavenSession(new DefaultMavenExecutionRequest());
             Activation activation = new Activation();
-            Activation.FileActivation fileActivation = new Activation.FileActivation();
-            fileActivation.setExists(theFile.toAbsolutePath().toString());
-            activation.setFile(fileActivation);
+            activation.setFile(new Activation.FileActivation(new Activation.FileActivationType.Exists(theFile.toAbsolutePath().toString())));
 
             boolean active = activationProcessor.isActive(activation, session);
 
@@ -90,9 +88,7 @@ class TestActivationProcessor
 
             MavenSession session = createMavenSession(new DefaultMavenExecutionRequest());
             Activation activation = new Activation();
-            Activation.FileActivation fileActivation = new Activation.FileActivation();
-            fileActivation.setExists(theFile.toAbsolutePath().toString());
-            activation.setFile(fileActivation);
+            activation.setFile(new Activation.FileActivation(new Activation.FileActivationType.Exists(theFile.toAbsolutePath().toString())));
 
             boolean active = activationProcessor.isActive(activation, session);
 
@@ -108,9 +104,7 @@ class TestActivationProcessor
 
             MavenSession session = createMavenSession(new DefaultMavenExecutionRequest());
             Activation activation = new Activation();
-            Activation.FileActivation fileActivation = new Activation.FileActivation();
-            fileActivation.setMissing(theFile.toAbsolutePath().toString());
-            activation.setFile(fileActivation);
+            activation.setFile(new Activation.FileActivation(new Activation.FileActivationType.Missing(theFile.toAbsolutePath().toString())));
 
             boolean active = activationProcessor.isActive(activation, session);
 
@@ -126,9 +120,7 @@ class TestActivationProcessor
 
             MavenSession session = createMavenSession(new DefaultMavenExecutionRequest());
             Activation activation = new Activation();
-            Activation.FileActivation fileActivation = new Activation.FileActivation();
-            fileActivation.setMissing(theFile.toAbsolutePath().toString());
-            activation.setFile(fileActivation);
+            activation.setFile(new Activation.FileActivation(new Activation.FileActivationType.Missing(theFile.toAbsolutePath().toString())));
 
             boolean active = activationProcessor.isActive(activation, session);
 
@@ -152,9 +144,7 @@ class TestActivationProcessor
             mavenProject.setFile(projectFile.toFile());
             session.setCurrentProject(mavenProject);
             Activation activation = new Activation();
-            Activation.FileActivation fileActivation = new Activation.FileActivation();
-            fileActivation.setExists("${fileNameFromProperty}.txt");
-            activation.setFile(fileActivation);
+            activation.setFile(new Activation.FileActivation(new Activation.FileActivationType.Exists("${fileNameFromProperty}.txt")));
 
             boolean active = activationProcessor.isActive(activation, session);
 
