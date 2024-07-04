@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlType;
 
 /**
@@ -18,6 +19,7 @@ public class Activation
      *
      * @see org.apache.maven.model.Activation#getJdk()
      */
+    @XmlElement(name = "host-jdk")
     public String getHostJdk()
     {
         return hostJdk;
@@ -70,6 +72,7 @@ public class Activation
     /**
      * Activation occurs when running with specific versions of the AutoJDK plugin.  This can be either an exact version or a version range.
      */
+    @XmlElement(name = "autojdk-version")
     public String getAutoJdkVersion()
     {
         return autoJdkVersion;
@@ -152,11 +155,10 @@ public class Activation
         private String name;
         private String value;
 
-        //TODO name is mandatory
-
         /**
          * The name of the property that must exist for activation.
          */
+        @XmlElement(required = true)
         public String getName()
         {
             return name;
