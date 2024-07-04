@@ -322,6 +322,112 @@ class TestAutoJdkConfiguration
         assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
     }
 
+    @Test
+    void activationByAutoJdkVersionSuccess(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <autojdk-version>[,100)</autojdk-version>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
+
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationByAutoJdkVersionNotIncluded(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <autojdk-version>[100,)</autojdk-version>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
+
+        //Everything should be at defaults because config file was not activated
+        assertThat(configuration.getVendors()).isEqualTo(AutoJdkConfiguration.DEFAULT_VENDORS);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationByHostJdkVersionSuccess(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <host-jdk>[17,)</host-jdk>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("java.version", "17.0.0");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void activationByHostJdkVersionNotIncluded(@TempDir Path tempDir)
+    throws Exception
+    {
+        String xml =
+                "<autojdk-configuration>" +
+                "    <activation>" +
+                "        <host-jdk>[17,)</host-jdk>" +
+                "    </activation>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path configFile = tempDir.resolve("config.xml");
+        Files.writeString(configFile, xml);
+
+        DefaultMavenExecutionRequest executionRequest = new DefaultMavenExecutionRequest();
+        Properties systemProperties = new Properties();
+        systemProperties.setProperty("java.version", "11.0.0");
+        executionRequest.setSystemProperties(systemProperties);
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(configFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession(executionRequest));
+
+        //Everything should be at defaults because config file was not activated
+        assertThat(configuration.getVendors()).isEqualTo(AutoJdkConfiguration.DEFAULT_VENDORS);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
     private static ActivationProcessor createActivationProcessor()
     {
         FileProfileActivator fileProfileActivator = new FileProfileActivator();
