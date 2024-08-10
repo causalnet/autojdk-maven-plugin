@@ -190,6 +190,10 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         if (combined.getJdkUpdatePolicy() == null)
             combined.setJdkUpdatePolicy(this.getJdkUpdatePolicy());
 
+        combined.setJdkMavenRepositories(other.getJdkMavenRepositories());
+        if (combined.getJdkMavenRepositories().isEmpty())
+            combined.setJdkMavenRepositories(this.getJdkMavenRepositories());
+
         return combined;
     }
 

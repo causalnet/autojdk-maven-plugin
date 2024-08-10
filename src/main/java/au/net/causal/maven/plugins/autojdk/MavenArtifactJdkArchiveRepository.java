@@ -42,7 +42,7 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
     private final ExceptionalSupplier<Path, IOException> tempDirectorySupplier;
 
     public MavenArtifactJdkArchiveRepository(RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
-                                             List<RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
+                                             Collection<? extends RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
                                              VendorService vendorService,
                                              AutoJdkXmlManager xmlManager,
                                              ExceptionalSupplier<Path, IOException> tempDirectorySupplier)

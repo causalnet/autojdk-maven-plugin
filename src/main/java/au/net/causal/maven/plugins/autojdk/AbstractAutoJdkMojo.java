@@ -65,10 +65,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
     private RepositorySystemSession repoSession;
 
-    //TODO is this right?  Should we really use the current project's repositories to resolve JDK artifacts?
-    @Parameter(defaultValue = "${project.remotePluginRepositories}", readonly = true)
-    protected List<RemoteRepository> remoteRepositories;
-
     @Parameter( defaultValue = "${plugin}", required = true, readonly = true )
     private PluginDescriptor pluginDescriptor;
 
@@ -192,11 +188,22 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
-        //TODO don't use remoteRepositories, instead build them from whats configured in autoJdkConfiguration
-        //   also use the groupId configured in autoJdkConfiguration
 
-
-        jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager, this::tempDownloadDirectory));
+        for (AutoJdkConfiguration.JdkMavenRepository jdkMavenRepository : autoJdkConfiguration.getJdkMavenRepositories())
+        {
+            if (jdkMavenRepository.getJdkGroupId() == null)
+                getLog().warn("Ignoring autojdk configured jdk repository " + jdkMavenRepository.getId() + ", no jdk-group-id specified");
+            else if (jdkMavenRepository.getUrl() == null)
+                getLog().warn("Ignoring autojdk configured jdk repository " + jdkMavenRepository.getId() + ", no repository url specified");
+            else
+            {
+                RemoteRepository remoteRepo = jdkRemoteRepository(jdkMavenRepository);
+                jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(
+                        repositorySystem, repoSession, List.of(remoteRepo),
+                        jdkMavenRepository.getJdkGroupId(), userConfiguredVendorService,
+                        xmlManager, this::tempDownloadDirectory));
+            }
+        }
         if (!offlineMode)
             jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, fileDownloader));
 
@@ -218,6 +225,13 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         }
 
         executeImpl();
+    }
+
+    private RemoteRepository jdkRemoteRepository(AutoJdkConfiguration.JdkMavenRepository r)
+    {
+        //TODO do we need to fill in proxy, auth here?
+        return new RemoteRepository.Builder(r.getId(), "default", r.getUrl())
+                .build();
     }
 
     private void configureAutoJdkUpdatePolicy(AutoJdkConfiguration configuration)
