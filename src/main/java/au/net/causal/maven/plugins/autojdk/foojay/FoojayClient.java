@@ -30,6 +30,8 @@ public class FoojayClient
     private final ApiClient apiClient;
     private final DefaultApi api;
 
+    private final boolean useMajorVersionsFallbackOnly = true;
+
     public FoojayClient(ApiClient apiClient)
     {
         this.apiClient = Objects.requireNonNull(apiClient);
@@ -110,7 +112,12 @@ public class FoojayClient
     public List<? extends MajorVersion> getAllMajorVersions()
     throws ApiException
     {
+        if (useMajorVersionsFallbackOnly)
+            return getAllMajorVersionsUsingFallback();
+
         Object rawResponse;
+
+        //Disabled for now since getAllMajorVersionsV3 misses some minor versions
         try
         {
             rawResponse = api.getAllMajorVersionsV3(null, null, null, false, null, null, null);

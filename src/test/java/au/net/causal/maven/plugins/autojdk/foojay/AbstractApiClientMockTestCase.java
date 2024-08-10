@@ -25,7 +25,7 @@ import static com.github.tomakehurst.wiremock.stubbing.StubImport.*;
 class AbstractApiClientMockTestCase
 {
     /**
-     * Controls whether
+     * Controls whether to wiremock playback or record, or use the real service when running test cases.
      */
     static final WireMockMode wireMockMode = WireMockMode.PLAYBACK;
 
