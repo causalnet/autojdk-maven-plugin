@@ -64,6 +64,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     private final List<String> vendors = new ArrayList<>();
     private final List<ExtensionExclusion> extensionExclusions = new ArrayList<>();
     private JdkUpdatePolicySpec jdkUpdatePolicy;
+    private final List<JdkMavenRepository> jdkMavenRepositories = new ArrayList<>();
 
     public static AutoJdkConfiguration defaultAutoJdkConfiguration()
     {
@@ -151,6 +152,19 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     public void setJdkUpdatePolicy(JdkUpdatePolicySpec jdkUpdatePolicy)
     {
         this.jdkUpdatePolicy = jdkUpdatePolicy;
+    }
+
+    @XmlElementWrapper(name = "jdk-maven-repositories")
+    @XmlElement(name = "jdk-maven-repository")
+    public List<JdkMavenRepository> getJdkMavenRepositories()
+    {
+        return jdkMavenRepositories;
+    }
+
+    public void setJdkMavenRepositories(List<JdkMavenRepository> jdkMavenRepositories)
+    {
+        this.jdkMavenRepositories.clear();
+        this.jdkMavenRepositories.addAll(jdkMavenRepositories);
     }
 
     /**
@@ -272,6 +286,58 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         public int hashCode()
         {
             return Objects.hash(getVersion(), getSubstitution());
+        }
+    }
+
+    /**
+     * A Maven repository that contains downloadable JDKs and metadata.
+     */
+    public static class JdkMavenRepository
+    {
+        private String id;
+        private String name;
+        private String url;
+        private String jdkGroupId;
+
+        public String getId()
+        {
+            return id;
+        }
+
+        public void setId(String id)
+        {
+            this.id = id;
+        }
+
+        public String getName()
+        {
+            return name;
+        }
+
+        public void setName(String name)
+        {
+            this.name = name;
+        }
+
+        public String getUrl()
+        {
+            return url;
+        }
+
+        public void setUrl(String url)
+        {
+            this.url = url;
+        }
+
+        @XmlElement(name = "jdk-group-id")
+        public String getJdkGroupId()
+        {
+            return jdkGroupId;
+        }
+
+        public void setJdkGroupId(String jdkGroupId)
+        {
+            this.jdkGroupId = jdkGroupId;
         }
     }
 

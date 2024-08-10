@@ -65,6 +65,7 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
     @Parameter(defaultValue = "${repositorySystemSession}", readonly = true)
     private RepositorySystemSession repoSession;
 
+    //TODO is this right?  Should we really use the current project's repositories to resolve JDK artifacts?
     @Parameter(defaultValue = "${project.remotePluginRepositories}", readonly = true)
     protected List<RemoteRepository> remoteRepositories;
 
@@ -191,6 +192,10 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
 
         VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
+        //TODO don't use remoteRepositories, instead build them from whats configured in autoJdkConfiguration
+        //   also use the groupId configured in autoJdkConfiguration
+
+
         jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(repositorySystem, repoSession, remoteRepositories, "au.net.causal.autojdk.jdk", userConfiguredVendorService, xmlManager, this::tempDownloadDirectory));
         if (!offlineMode)
             jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, fileDownloader));
