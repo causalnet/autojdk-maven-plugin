@@ -1,0 +1,19 @@
+{
+  "id" : "0c7390fc-07d0-494e-b5ef-565a95a06582",
+  "name" : "disco_v3.0_distributions",
+  "request" : {
+    "url" : "/disco/v3.0/distributions?include_versions=true&include_synonyms=false",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "disco_v3.0_distributions-0c7390fc-07d0-494e-b5ef-565a95a06582.json",
+    "headers" : {
+      "Date" : "Sat, 10 Aug 2024 04:34:04 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "0c7390fc-07d0-494e-b5ef-565a95a06582",
+  "persistent" : true,
+  "insertionIndex" : 35
+}
