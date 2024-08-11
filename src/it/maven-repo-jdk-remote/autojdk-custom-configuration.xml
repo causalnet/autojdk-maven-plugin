@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration>
+    <jdk-maven-repositories>
+        <jdk-maven-repository>
+            <id>my-jdk-repo</id>
+            <url>http://localhost:8081/galah-repo/maven2/</url>
+            <jdk-group-id>au.net.causal.autojdk.jdk</jdk-group-id>
+        </jdk-maven-repository>
+    </jdk-maven-repositories>
+</autojdk-configuration>
