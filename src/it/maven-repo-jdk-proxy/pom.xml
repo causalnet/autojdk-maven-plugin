@@ -1,0 +1,215 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>au.net.causal.maven.plugins.autojdk.it</groupId>
+    <artifactId>autojdk-maven-repo-jdk-proxy</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>AutoJDK Testing Project</name>
+
+    <properties>
+    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>    	
+        <java.version>17</java.version>
+    </properties>
+
+    <build>
+    	<pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.22.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>keytool-maven-plugin</artifactId>
+                    <version>1.7</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <!--
+            Setup for generating SSL keys / CAs.  Wiremock's internal code to do this doesn't
+            work on all versions of Java so do it ourselves.
+            -->
+            <!-- Generate CA and server certificates, make CA sign server certificate and put the CA public cert into the server keystore -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>keytool-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>clean-wiremock-keystore</id>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                    <execution>
+                        <id>generate-ca</id>
+                        <goals>
+                            <goal>generateKeyPair</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <alias>wiremock-ca</alias>
+                            <dname>CN=wiremock-ca</dname>
+                            <arguments>
+                                <argument>-ext</argument>
+                                <argument>ku:critical=cRLSign,keyCertSign</argument>
+                                <argument>-ext</argument>
+                                <argument>bc:critical=ca:true,pathlen:1</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-foojay-key</id>
+                        <goals>
+                            <goal>generateKeyPair</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <alias>api.foojay.io</alias>
+                            <dname>cn=api.foojay.io</dname>
+                            <arguments>
+                                <argument>-ext</argument>
+                                <argument>ku:critical=digitalSignature,keyEncipherment</argument>
+                                <argument>-ext</argument>
+                                <argument>eku=serverAuth,clientAuth</argument>
+                                <argument>-ext</argument>
+                                <argument>SAN=dns:api.foojay.io</argument>
+                                <argument>-signer</argument>
+                                <argument>wiremock-ca</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <keystore>${user.home}/.wiremock/ca-keystore.jks</keystore>
+                    <storepass>password</storepass>
+                    <validity>700</validity>
+                    <keyalg>RSA</keyalg>
+                    <keysize>2048</keysize>
+                    <storetype>JKS</storetype>
+                    <skip>${autojdk.it.keytool.skip}</skip>
+                </configuration>
+            </plugin>
+
+            <!-- This is the proxy server that we expect autojdk to pick up -->
+            <plugin>
+                <groupId>io.buildlogic</groupId>
+                <artifactId>wiremock-maven-plugin</artifactId>
+                <version>8.0.0</version>
+                <configuration>
+                    <params>--port=8081 --bind-address 127.0.0.1 --enable-browser-proxying --verbose</params>
+                    <dir>${project.basedir}/wiremock</dir>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start-proxy-before-autojdk</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                    <execution>
+                        <id>stop-proxy-at-end</id>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.wiremock</groupId>
+                        <artifactId>wiremock</artifactId>
+                        <version>3.5.4</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <!--
+            Don't want to resolve previously installed fake JDK from the local repo, want to always download from the proxy, so purge it before autojdk runs.
+            Needed despite running purge goal earlier, since purge won't work if there is no installed JDK but it still exists in the local repo.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>purge-fake-jdk-jar-from-local-repo</id>
+                        <goals>
+                            <goal>purge-local-repository</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <manualIncludes>
+                                <manualInclude>au.net.causal.autojdk.jdk:galah-vendor</manualInclude>
+                            </manualIncludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>@project.groupId@</groupId>
+                <artifactId>@project.artifactId@</artifactId>
+                <version>@project.version@</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <!-- Java < 17 does not need to use keytool to generate wiremock certificates so we can skip that part -->
+        <profile>
+            <id>jdkpre17</id>
+            <activation>
+                <jdk>[,17)</jdk>
+            </activation>
+            <properties>
+                <autojdk.it.keytool.skip>true</autojdk.it.keytool.skip>
+            </properties>
+        </profile>
+
+        <!-- Define in an active-by-default profile so we can skip it if we need to by disabling this profile -->
+        <profile>
+            <id>toolchainsProfile</id>
+            <activation>
+                <property>
+                    <name>!disableToolchains</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-toolchains-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>toolchain</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>${java.version}</version>
+                                    <!-- Not a real vendor, but mock proxy server will have a result for this one -->
+                                    <vendor>galah-vendor</vendor>
+                                </jdk>
+                            </toolchains>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
