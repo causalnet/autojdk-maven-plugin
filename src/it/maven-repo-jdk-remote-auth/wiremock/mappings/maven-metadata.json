@@ -1,0 +1,16 @@
+{
+  "id" : "dba15f89-4e37-3c21-bf51-b335c7087fca",
+  "request" : {
+    "url" : "/galah-repo/maven2/au/net/causal/autojdk/jdk/galah-vendor/maven-metadata.xml",
+    "method" : "GET"
+  },
+  "response" : {
+    "status" : 200,
+    "bodyFileName" : "maven-metadata.xml",
+    "headers" : {
+      "Date" : "Thu, 13 Oct 2022 04:34:31 GMT",
+      "Content-Type" : "application/json"
+    }
+  },
+  "uuid" : "dba15f89-4e37-3c21-bf51-b335c7087fca"
+}

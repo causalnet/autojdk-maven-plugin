@@ -1,0 +1,133 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>au.net.causal.maven.plugins.autojdk.it</groupId>
+    <artifactId>autojdk-maven-repo-jdk-remote</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <name>AutoJDK Testing Project</name>
+
+    <properties>
+    	<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>    	
+        <java.version>17</java.version>
+    </properties>
+
+    <build>
+    	<pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>2.22.2</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <!-- Wiremock runs the JDK repo -->
+            <plugin>
+                <groupId>io.buildlogic</groupId>
+                <artifactId>wiremock-maven-plugin</artifactId>
+                <version>8.0.0</version>
+                <configuration>
+                    <params>--port=8081 --bind-address 127.0.0.1 --verbose</params>
+                    <dir>${project.basedir}/wiremock</dir>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>start-repo-before-autojdk</id>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <phase>validate</phase>
+                    </execution>
+                    <execution>
+                        <id>stop-repo-at-end</id>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.wiremock</groupId>
+                        <artifactId>wiremock</artifactId>
+                        <version>3.5.4</version>
+                    </dependency>
+                </dependencies>
+            </plugin>
+
+            <!--
+            Don't want to resolve previously installed fake JDK from the local repo, want to always download from the wiremock repo, so purge it before autojdk runs.
+            Needed despite running purge goal earlier, since purge won't work if there is no installed JDK but it still exists in the local repo.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <id>purge-fake-jdk-jar-from-local-repo</id>
+                        <goals>
+                            <goal>purge-local-repository</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <manualIncludes>
+                                <manualInclude>au.net.causal.autojdk.jdk:galah-vendor</manualInclude>
+                            </manualIncludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>@project.groupId@</groupId>
+                <artifactId>@project.artifactId@</artifactId>
+                <version>@project.version@</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+    <profiles>
+        <!-- Define in an active-by-default profile so we can skip it if we need to by disabling this profile -->
+        <profile>
+            <id>toolchainsProfile</id>
+            <activation>
+                <property>
+                    <name>!disableToolchains</name>
+                </property>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-toolchains-plugin</artifactId>
+                        <version>3.0.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>toolchain</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>${java.version}</version>
+                                    <!-- Not a real vendor, but wiremock repo server will have a result for this one -->
+                                    <vendor>galah-vendor</vendor>
+                                </jdk>
+                            </toolchains>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
