@@ -269,7 +269,7 @@ class TestAutoJdk
                                                   "galahjdk", //galahjdk is preferred
                                                   AutoJdkConfiguration.WILDCARD_VENDOR, //all unknowns
                                                   "zzzcockatoojdk"), //cockatoo jdk is preferred even less than unknowns
-                                               List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY), jdkSearchUpdateChecker, clock);
+                                               List.of(), AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY, AutoJdkConfiguration.DEFAULT_JDK_REPOSITORIES), jdkSearchUpdateChecker, clock);
 
             List<JdkArtifact> artifacts = Arrays.asList(
                     new SimpleJdkArtifact("galahjdk", "7.0.2", ArchiveType.TAR_GZ),

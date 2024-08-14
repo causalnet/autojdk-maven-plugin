@@ -4,17 +4,33 @@ import au.net.causal.maven.plugins.autojdk.config.Activation;
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
 import au.net.causal.maven.plugins.autojdk.config.CombinableConfiguration;
+import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
+import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
+import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
+import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlElements;
 import jakarta.xml.bind.annotation.XmlRootElement;
 import jakarta.xml.bind.annotation.XmlType;
+import org.apache.maven.RepositoryUtils;
+import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
+import org.apache.maven.artifact.repository.MavenArtifactRepository;
+import org.apache.maven.artifact.repository.layout.DefaultRepositoryLayout;
 import org.apache.maven.execution.MavenSession;
+import org.apache.maven.plugin.logging.Log;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.repository.Authentication;
+import org.eclipse.aether.repository.Proxy;
+import org.eclipse.aether.repository.RemoteRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.xml.datatype.DatatypeConstants;
 import javax.xml.datatype.DatatypeFactory;
+import java.io.IOException;
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -51,6 +67,14 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
      * Default JDK update policy duration of 1 day.
      */
     static final JdkUpdatePolicySpec DEFAULT_JDK_UPDATE_POLICY = new JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED)));
+
+    /**
+     * Default JDK repositories are just the foojay repository.
+     */
+    static final List<JdkRepository> DEFAULT_JDK_REPOSITORIES = List.of(
+            new FoojayDiscoRepository()
+    );
+
     private static final Logger log = LoggerFactory.getLogger(AutoJdkConfiguration.class);
 
     //Method instead of variable since extension exclusion element is mutable
@@ -64,25 +88,26 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     private final List<String> vendors = new ArrayList<>();
     private final List<ExtensionExclusion> extensionExclusions = new ArrayList<>();
     private JdkUpdatePolicySpec jdkUpdatePolicy;
-    private final List<JdkMavenRepository> jdkMavenRepositories = new ArrayList<>();
+    private final List<JdkRepository> jdkRepositories = new ArrayList<>();
 
     public static AutoJdkConfiguration defaultAutoJdkConfiguration()
     {
-        return new AutoJdkConfiguration(null, Collections.emptyList(), DEFAULT_VENDORS, defaultExtensionExclusions(), DEFAULT_JDK_UPDATE_POLICY);
+        return new AutoJdkConfiguration(null, Collections.emptyList(), DEFAULT_VENDORS, defaultExtensionExclusions(), DEFAULT_JDK_UPDATE_POLICY, DEFAULT_JDK_REPOSITORIES);
     }
 
     public AutoJdkConfiguration()
     {
-        this(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null);
+        this(null, Collections.emptyList(), Collections.emptyList(), Collections.emptyList(), null, Collections.emptyList());
     }
 
-    public AutoJdkConfiguration(Activation activation, List<String> includes, List<String> vendors, List<ExtensionExclusion> extensionExclusions, JdkUpdatePolicySpec jdkUpdatePolicy)
+    public AutoJdkConfiguration(Activation activation, List<String> includes, List<String> vendors, List<ExtensionExclusion> extensionExclusions, JdkUpdatePolicySpec jdkUpdatePolicy, List<JdkRepository> jdkRepositories)
     {
         this.activation = activation;
         this.includes.addAll(includes);
         this.vendors.addAll(vendors);
         this.extensionExclusions.addAll(extensionExclusions);
         this.jdkUpdatePolicy = jdkUpdatePolicy;
+        this.jdkRepositories.addAll(jdkRepositories);
     }
 
     /**
@@ -154,17 +179,20 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         this.jdkUpdatePolicy = jdkUpdatePolicy;
     }
 
-    @XmlElementWrapper(name = "jdk-maven-repositories")
-    @XmlElement(name = "jdk-maven-repository")
-    public List<JdkMavenRepository> getJdkMavenRepositories()
+    @XmlElementWrapper(name = "jdk-repositories")
+    @XmlElements({
+            @XmlElement(name = "foojay-disco", type = FoojayDiscoRepository.class),
+            @XmlElement(name = "maven-repository", type = JdkMavenRepository.class)
+    })
+    public List<JdkRepository> getJdkRepositories()
     {
-        return jdkMavenRepositories;
+        return jdkRepositories;
     }
 
-    public void setJdkMavenRepositories(List<JdkMavenRepository> jdkMavenRepositories)
+    public void setJdkRepositories(List<JdkRepository> jdkRepositories)
     {
-        this.jdkMavenRepositories.clear();
-        this.jdkMavenRepositories.addAll(jdkMavenRepositories);
+        this.jdkRepositories.clear();
+        this.jdkRepositories.addAll(jdkRepositories);
     }
 
     /**
@@ -190,9 +218,9 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         if (combined.getJdkUpdatePolicy() == null)
             combined.setJdkUpdatePolicy(this.getJdkUpdatePolicy());
 
-        combined.setJdkMavenRepositories(other.getJdkMavenRepositories());
-        if (combined.getJdkMavenRepositories().isEmpty())
-            combined.setJdkMavenRepositories(this.getJdkMavenRepositories());
+        combined.setJdkRepositories(other.getJdkRepositories());
+        if (combined.getJdkRepositories().isEmpty())
+            combined.setJdkRepositories(this.getJdkRepositories());
 
         return combined;
     }
@@ -293,10 +321,75 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         }
     }
 
+    public interface JdkRepository
+    {
+        public abstract JdkArchiveRepository<?> createJdkArchiveRepository(
+                RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
+                boolean offlineMode, boolean allowHttpJdkDownloads,
+                ExceptionalSupplier<Path, IOException> tempDownloadDirectory,
+                AutoJdkXmlManager xmlManager,
+                AutoJdkConfiguration autoJdkConfiguration,
+                Log log
+        );
+    }
+
+    public static class FoojayDiscoRepository implements JdkRepository
+    {
+        @Override
+        public JdkArchiveRepository<?> createJdkArchiveRepository(
+                RepositorySystem repositorySystem,
+                RepositorySystemSession repositorySystemSession,
+                boolean offlineMode, boolean allowHttpJdkDownloads,
+                ExceptionalSupplier<Path, IOException> tempDownloadDirectory,
+                AutoJdkXmlManager xmlManager,
+                AutoJdkConfiguration autoJdkConfiguration,
+                Log log
+        )
+        {
+            if (offlineMode)
+                return null;
+
+            HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
+
+            //Proxy + other builder configuration
+            MavenJdkProxySelector proxySelector = new MavenJdkProxySelector(repositorySystemSession);
+            httpClientBuilder.proxy(proxySelector).authenticator(proxySelector.authenticator());
+            if (allowHttpJdkDownloads)
+                httpClientBuilder.followRedirects(HttpClient.Redirect.ALWAYS);
+            else
+                httpClientBuilder.followRedirects(HttpClient.Redirect.NORMAL); //Allow redirect, except from HTTPS URLs to HTTP URLs.
+
+
+            ApiClient apiClient = FoojayClient.createDefaultApiClient();
+            apiClient.setHttpClientBuilder(httpClientBuilder);
+            FoojayClient foojayClient = new FoojayClient(apiClient);
+
+            FileDownloader fileDownloader = new HttpClientFileDownloader(tempDownloadDirectory, httpClientBuilder);
+            fileDownloader.addDownloadProgressListener(new MavenDownloadProgressAdapter(repositorySystemSession));
+
+            return new FoojayOpenApiJdkRepository(foojayClient, fileDownloader);
+        }
+        //TODO local repo caching config
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof FoojayDiscoRepository)) return false;
+            return true;
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash();
+        }
+    }
+
     /**
      * A Maven repository that contains downloadable JDKs and metadata.
      */
-    public static class JdkMavenRepository
+    public static class JdkMavenRepository implements JdkRepository
     {
         private String id;
         private String name;
@@ -342,6 +435,78 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         public void setJdkGroupId(String jdkGroupId)
         {
             this.jdkGroupId = jdkGroupId;
+        }
+
+        @Override
+        public JdkArchiveRepository<?> createJdkArchiveRepository(
+                RepositorySystem repositorySystem,
+                RepositorySystemSession repositorySystemSession,
+                boolean offlineMode,
+                boolean allowHttpJdkDownloads,
+                ExceptionalSupplier<Path, IOException> tempDownloadDirectory,
+                AutoJdkXmlManager xmlManager,
+                AutoJdkConfiguration autoJdkConfiguration,
+                Log log)
+        {
+            if (getJdkGroupId() == null)
+            {
+                log.warn("Ignoring autojdk configured jdk repository " + getId() + ", no jdk-group-id specified");
+                return null;
+            }
+            else if (getUrl() == null)
+            {
+                log.warn("Ignoring autojdk configured jdk repository " + getId() + ", no repository url specified");
+                return null;
+            }
+
+            RemoteRepository remoteRepo = jdkRemoteRepository(repositorySystemSession);
+
+            VendorService allVendorService = new OfflineDistributionsVendorService();
+            //allVendorService = new FoojayOpenApiVendorService(foojayClient); //TODO we'll miss out on any new vendors
+
+            VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
+
+
+            return new MavenArtifactJdkArchiveRepository(
+                    repositorySystem, repositorySystemSession, List.of(remoteRepo),
+                    getJdkGroupId(), userConfiguredVendorService,
+                    xmlManager, tempDownloadDirectory);
+        }
+
+        private RemoteRepository jdkRemoteRepository(RepositorySystemSession repoSession)
+        {
+            MavenArtifactRepository repo = new MavenArtifactRepository(
+                    getId(), getUrl(), new DefaultRepositoryLayout(),
+                    new ArtifactRepositoryPolicy(true, ArtifactRepositoryPolicy.UPDATE_POLICY_ALWAYS, ArtifactRepositoryPolicy.CHECKSUM_POLICY_IGNORE),
+                    new ArtifactRepositoryPolicy(true, ArtifactRepositoryPolicy.UPDATE_POLICY_NEVER, ArtifactRepositoryPolicy.CHECKSUM_POLICY_IGNORE)
+            );
+
+            RemoteRepository rRepo = RepositoryUtils.toRepo(repo);
+
+            Proxy proxy = repoSession.getProxySelector().getProxy(rRepo);
+            if (proxy != null)
+                rRepo = new RemoteRepository.Builder(rRepo).setProxy(proxy).build();
+
+            Authentication auth = repoSession.getAuthenticationSelector().getAuthentication(rRepo);
+            if (auth != null)
+                rRepo = new RemoteRepository.Builder(rRepo).setAuthentication(auth).build();
+
+            return rRepo;
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+            if (this == o) return true;
+            if (!(o instanceof JdkMavenRepository)) return false;
+            JdkMavenRepository that = (JdkMavenRepository) o;
+            return Objects.equals(id, that.id) && Objects.equals(name, that.name) && Objects.equals(url, that.url) && Objects.equals(jdkGroupId, that.jdkGroupId);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(id, name, url, jdkGroupId);
         }
     }
 

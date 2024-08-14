@@ -2,11 +2,6 @@ package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
-import au.net.causal.maven.plugins.autojdk.foojay.FoojayClient;
-import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiJdkRepository;
-import au.net.causal.maven.plugins.autojdk.foojay.FoojayOpenApiVendorService;
-import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
-import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.RepositoryUtils;
@@ -178,40 +173,13 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         }
         configureAutoJdkUpdatePolicy(autoJdkConfiguration);
 
-        FoojayClient foojayClient = null;
-        if (!offlineMode)
-        {
-            ApiClient apiClient = FoojayClient.createDefaultApiClient();
-            apiClient.setHttpClientBuilder(httpClientBuilder);
-            foojayClient = new FoojayClient(apiClient);
-        }
-
-        VendorService allVendorService;
-        if (offlineMode)
-            allVendorService = new OfflineDistributionsVendorService();
-        else
-            allVendorService = new FoojayOpenApiVendorService(foojayClient);
-
-        VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
         List<JdkArchiveRepository<?>> jdkArchiveRepositories = new ArrayList<>();
-
-        for (AutoJdkConfiguration.JdkMavenRepository jdkMavenRepository : autoJdkConfiguration.getJdkMavenRepositories())
+        for (AutoJdkConfiguration.JdkRepository jdkRepository : autoJdkConfiguration.getJdkRepositories())
         {
-            if (jdkMavenRepository.getJdkGroupId() == null)
-                getLog().warn("Ignoring autojdk configured jdk repository " + jdkMavenRepository.getId() + ", no jdk-group-id specified");
-            else if (jdkMavenRepository.getUrl() == null)
-                getLog().warn("Ignoring autojdk configured jdk repository " + jdkMavenRepository.getId() + ", no repository url specified");
-            else
-            {
-                RemoteRepository remoteRepo = jdkRemoteRepository(jdkMavenRepository);
-                jdkArchiveRepositories.add(new MavenArtifactJdkArchiveRepository(
-                        repositorySystem, repoSession, List.of(remoteRepo),
-                        jdkMavenRepository.getJdkGroupId(), userConfiguredVendorService,
-                        xmlManager, this::tempDownloadDirectory));
-            }
+            JdkArchiveRepository<?> jdkArchiveRepository = jdkRepository.createJdkArchiveRepository(repositorySystem, repoSession, offlineMode, allowHttpJdkDownloads, this::tempDownloadDirectory, xmlManager, autoJdkConfiguration, getLog());
+            if (jdkArchiveRepository != null)
+                jdkArchiveRepositories.add(jdkArchiveRepository);
         }
-        if (!offlineMode)
-            jdkArchiveRepositories.add(new FoojayOpenApiJdkRepository(foojayClient, fileDownloader));
 
         VersionTranslationScheme versionTranslationScheme = getVersionTranslationScheme();
         Clock clock = Clock.systemDefaultZone();
