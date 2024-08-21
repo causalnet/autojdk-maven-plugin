@@ -72,16 +72,42 @@ public class CompositeJdkArchiveRepository implements JdkArchiveRepository<Compo
 
     @Override
     @SuppressWarnings({"rawtypes", "unchecked"}) //Compiler bug?  JdkArchive<WrappedJdkArtifact<A>> where A is any should be convertible from JdkArchive<WrappedJdkArtifact<?>> but isn't...
-    public void purgeResolvedArchive(JdkArchive<WrappedJdkArtifact<?>> archive)
+    public void cleanUpAfterArchiveUse(JdkArchive<WrappedJdkArtifact<?>> archive)
     throws JdkRepositoryException
     {
-        purgeResolvedArchiveTypeSafe((JdkArchive)archive);
+        cleanUpAfterArchiveUseTypeSafe((JdkArchive)archive);
     }
 
-    private <A extends JdkArtifact> void purgeResolvedArchiveTypeSafe(JdkArchive<WrappedJdkArtifact<A>> archive)
+    private <A extends JdkArtifact> void cleanUpAfterArchiveUseTypeSafe(JdkArchive<WrappedJdkArtifact<A>> archive)
     throws JdkRepositoryException
     {
-        archive.getArtifact().getSourceRepository().purgeResolvedArchive(new JdkArchive<>(archive.getArtifact().getWrappedArtifact(), archive.getFile()));
+        archive.getArtifact().getSourceRepository().cleanUpAfterArchiveUse(new JdkArchive<>(archive.getArtifact().getWrappedArtifact(), archive.getFile()));
+    }
+
+    @Override
+    public Collection<? extends JdkArchive<WrappedJdkArtifact<?>>> purge(JdkSearchRequest jdkMatchSearchRequest)
+    throws JdkRepositoryException
+    {
+        List<JdkArchive<WrappedJdkArtifact<?>>> results = new ArrayList<>();
+        for (JdkArchiveRepository<?> repository : repositories)
+        {
+            List<? extends JdkArchive<WrappedJdkArtifact<?>>> curResults = purgeFromUnderlyingRepository(repository, jdkMatchSearchRequest);
+            results.addAll(curResults);
+        }
+        return results;
+    }
+
+    private <A extends JdkArtifact> List<? extends JdkArchive<WrappedJdkArtifact<?>>> purgeFromUnderlyingRepository(JdkArchiveRepository<A> repository, JdkSearchRequest jdkMatchSearchRequest)
+    throws JdkRepositoryException
+    {
+        List<JdkArchive<WrappedJdkArtifact<?>>> results = new ArrayList<>();
+        Collection<? extends JdkArchive<A>> repoResults = repository.purge(jdkMatchSearchRequest);
+        for (JdkArchive<A> result : repoResults)
+        {
+            WrappedJdkArtifact<A> wrappedResult = new WrappedJdkArtifact<>(repository, result.getArtifact());
+            results.add(new JdkArchive<>(wrappedResult, result.getFile()));
+        }
+        return results;
     }
 
     /**

@@ -38,10 +38,7 @@ public class SearchErrorLoggingJdkArchiveRepository<A extends JdkArtifact> imple
 
     private static SearchErrorLoggingJdkArchiveRepository<?> wrapRepository(JdkArchiveRepository<?> repository)
     {
-        if (repository instanceof CachingJdkArchiveRepository<?>)
-            return new SearchErrorLoggingCachingJdkArchiveRepository<>((CachingJdkArchiveRepository<?>)repository);
-        else
-            return new SearchErrorLoggingJdkArchiveRepository<>(repository);
+        return new SearchErrorLoggingJdkArchiveRepository<>(repository);
     }
 
     /**
@@ -81,9 +78,15 @@ public class SearchErrorLoggingJdkArchiveRepository<A extends JdkArtifact> imple
     }
 
     @Override
-    public void purgeResolvedArchive(JdkArchive<A> archive) throws JdkRepositoryException
+    public void cleanUpAfterArchiveUse(JdkArchive<A> archive) throws JdkRepositoryException
     {
-        repository.purgeResolvedArchive(archive);
+        repository.cleanUpAfterArchiveUse(archive);
+    }
+
+    @Override
+    public Collection<? extends JdkArchive<A>> purge(JdkSearchRequest jdkMatchSearchRequest) throws JdkRepositoryException
+    {
+        return repository.purge(jdkMatchSearchRequest);
     }
 
     @Override

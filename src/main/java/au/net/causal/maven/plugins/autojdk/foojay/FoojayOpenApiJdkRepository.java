@@ -299,7 +299,7 @@ public class FoojayOpenApiJdkRepository implements JdkArchiveRepository<FoojayOp
     }
 
     @Override
-    public void purgeResolvedArchive(JdkArchive<FoojayOpenApiArtifact> archive)
+    public void cleanUpAfterArchiveUse(JdkArchive<FoojayOpenApiArtifact> archive)
     throws JdkRepositoryException
     {
         //The JDK archive will just be a temporary download
@@ -311,6 +311,14 @@ public class FoojayOpenApiJdkRepository implements JdkArchiveRepository<FoojayOp
         {
             throw new JdkRepositoryException("Error deleting downloaded archive " + archive.getFile() + ": " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Collection<? extends JdkArchive<FoojayOpenApiArtifact>> purge(JdkSearchRequest jdkMatchSearchRequest)
+    throws JdkRepositoryException
+    {
+        //This repository does not cache anything itself
+        return List.of();
     }
 
     protected static class VersionNumberAndLatest

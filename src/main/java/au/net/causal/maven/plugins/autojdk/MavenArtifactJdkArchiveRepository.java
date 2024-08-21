@@ -4,17 +4,19 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
-import org.eclipse.aether.installation.InstallRequest;
-import org.eclipse.aether.installation.InstallationException;
 import org.eclipse.aether.repository.LocalArtifactRequest;
 import org.eclipse.aether.repository.LocalArtifactResult;
 import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.resolution.*;
+import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResolutionException;
+import org.eclipse.aether.resolution.ArtifactResult;
+import org.eclipse.aether.resolution.VersionRangeRequest;
+import org.eclipse.aether.resolution.VersionRangeResolutionException;
+import org.eclipse.aether.resolution.VersionRangeResult;
 import org.eclipse.aether.version.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -25,11 +27,11 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepository<MavenJdkArtifact>
+public class MavenArtifactJdkArchiveRepository implements JdkArchiveRepository<MavenJdkArtifact>
 {
     private static final Logger log = LoggerFactory.getLogger(MavenArtifactJdkArchiveRepository.class);
 
-    private static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
+    static final String AUTOJDK_METADATA_EXTENSION = "autojdk-metadata.xml";
 
     private final RepositorySystem repositorySystem;
     private final RepositorySystemSession repositorySystemSession;
@@ -39,13 +41,10 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
     private final VendorService vendorService;
     private final AutoJdkXmlManager xmlManager;
 
-    private final ExceptionalSupplier<Path, IOException> tempDirectorySupplier;
-
     public MavenArtifactJdkArchiveRepository(RepositorySystem repositorySystem, RepositorySystemSession repositorySystemSession,
                                              Collection<? extends RemoteRepository> remoteRepositories, String mavenArtifactGroupId,
                                              VendorService vendorService,
-                                             AutoJdkXmlManager xmlManager,
-                                             ExceptionalSupplier<Path, IOException> tempDirectorySupplier)
+                                             AutoJdkXmlManager xmlManager)
     {
         this.repositorySystem = Objects.requireNonNull(repositorySystem);
         this.repositorySystemSession = Objects.requireNonNull(repositorySystemSession);
@@ -54,7 +53,6 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
         this.remoteRepositories = List.copyOf(remoteRepositories);
         this.vendorService = Objects.requireNonNull(vendorService);
         this.xmlManager = Objects.requireNonNull(xmlManager);
-        this.tempDirectorySupplier = Objects.requireNonNull(tempDirectorySupplier);
     }
 
     @Override
@@ -208,72 +206,6 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
         return new MavenJdkArtifact(mavenArtifactGroupId, jdkArtifact).getArtifact();
     }
 
-    @Override
-    public JdkArchive<MavenJdkArtifact> saveToCache(JdkArchive<?> archive)
-    throws JdkRepositoryException
-    {
-        //First check if we don't already have a cached version in the local repo, if we do just return that
-        Artifact mavenArtifact = mavenArtifactForJdkArtifact(archive.getArtifact());
-        ArtifactRequest lookupRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList() /*no remotes, local only*/, null);
-        try
-        {
-            ArtifactResult lookupResult = repositorySystem.resolveArtifact(repositorySystemSession, lookupRequest);
-
-            //If we get here, archive was already found in the local repo
-            MavenJdkArtifact jdkArtifact = new MavenJdkArtifact(lookupResult.getArtifact());
-            return new JdkArchive<>(jdkArtifact, lookupResult.getArtifact().getFile().toPath());
-        }
-        catch (ArtifactResolutionException e)
-        {
-            //Not found in local repo, that's fine, move on to downloading it
-        }
-
-        InstallRequest request = new InstallRequest();
-        mavenArtifact = mavenArtifact.setFile(archive.getFile().toFile());
-        request.setArtifacts(Collections.singletonList(mavenArtifact));
-        try
-        {
-            repositorySystem.install(repositorySystemSession, request);
-
-            //Re-resolve to local repo so file of artifact gets filled in
-            mavenArtifact = mavenArtifact.setFile(null);
-            ArtifactRequest reresolveRequest = new ArtifactRequest(mavenArtifact, Collections.emptyList(), null);
-            ArtifactResult reresolveResult = repositorySystem.resolveArtifact(repositorySystemSession, reresolveRequest);
-            File jdkArchiveInLocalRepo = reresolveResult.getArtifact().getFile();
-
-            //Also upload metadata
-            Path tempMetadataFile = tempDirectorySupplier.get().resolve(jdkArchiveInLocalRepo.toPath().getFileName().toString() + "." + AUTOJDK_METADATA_EXTENSION);
-            try
-            {
-                generateJdkArtifactMetadataFile(new MavenJdkArtifactMetadata(Collections.singleton(archive.getArtifact().getArchiveType()), archive.getArtifact().getReleaseType()), tempMetadataFile);
-                Artifact metadataArtifact = autoJdkMetadataArtifactForArchive(mavenArtifact);
-                metadataArtifact = metadataArtifact.setFile(tempMetadataFile.toFile());
-                InstallRequest metadataInstallRequest = new InstallRequest();
-                metadataInstallRequest.setArtifacts(Collections.singleton(metadataArtifact));
-                repositorySystem.install(repositorySystemSession, metadataInstallRequest);
-            }
-            finally
-            {
-                //Cleanup metadata file once it is installed to the local repo (or failed)
-                Files.deleteIfExists(tempMetadataFile);
-            }
-
-            MavenJdkArtifact jdkArtifact = new MavenJdkArtifact(reresolveResult.getArtifact());
-
-            return new JdkArchive<>(jdkArtifact, jdkArchiveInLocalRepo.toPath());
-        }
-        catch (IOException | InstallationException | ArtifactResolutionException | AutoJdkXmlManager.XmlWriteException e)
-        {
-            throw new JdkRepositoryException("Failed to install JDK archive artifact to local repo: " + e.getMessage(), e);
-        }
-    }
-
-    private void generateJdkArtifactMetadataFile(MavenJdkArtifactMetadata metadata, Path file)
-    throws AutoJdkXmlManager.XmlWriteException
-    {
-        xmlManager.writeFile(metadata, file);
-    }
-
     private Artifact autoJdkMetadataArtifactForArchive(Artifact archiveArtifact)
     {
         return new DefaultArtifact(archiveArtifact.getGroupId(), archiveArtifact.getArtifactId(), archiveArtifact.getClassifier(),
@@ -281,7 +213,13 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
     }
 
     @Override
-    public void purgeResolvedArchive(JdkArchive<MavenJdkArtifact> archive)
+    public void cleanUpAfterArchiveUse(JdkArchive<MavenJdkArtifact> archive)
+    throws JdkRepositoryException
+    {
+        //Allow artifacts to be cached in local repo, do nothing here
+    }
+
+    private void purgeLocalRepoArchive(JdkArchive<MavenJdkArtifact> archive)
     throws JdkRepositoryException
     {
         Path archiveFileInLocalRepo = archive.getFile();
@@ -315,7 +253,7 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
     }
 
     @Override
-    public Collection<? extends JdkArchive<MavenJdkArtifact>> purgeCache(JdkSearchRequest jdkMatchSearchRequest)
+    public Collection<? extends JdkArchive<MavenJdkArtifact>> purge(JdkSearchRequest jdkMatchSearchRequest)
     throws JdkRepositoryException
     {
         //Search only local repos, no remotes, since we're only looking in the local repo cache
@@ -327,7 +265,7 @@ public class MavenArtifactJdkArchiveRepository implements CachingJdkArchiveRepos
         for (MavenJdkArtifact cacheSearchResult : cacheSearchResults)
         {
             JdkArchive<MavenJdkArtifact> localRepositoryArchive = resolveArchive(cacheSearchResult, noRemoteRepositories);
-            purgeResolvedArchive(localRepositoryArchive);
+            purgeLocalRepoArchive(localRepositoryArchive);
             purgedArchives.add(localRepositoryArchive);
         }
 

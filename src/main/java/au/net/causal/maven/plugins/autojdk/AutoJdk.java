@@ -19,7 +19,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Entrypoint to AutoJDK functionality.
@@ -33,7 +32,6 @@ public class AutoJdk
     private final LocalJdkResolver localJdkResolver;
     private final JdkInstallationTarget jdkInstallationTarget;
     private final List<JdkArchiveRepository<?>> jdkArchiveRepositories;
-    private final CachingJdkArchiveRepository<?> cachingJdkArchiveRepository;
     private final VersionTranslationScheme versionTranslationScheme;
     private final AutoJdkConfiguration autoJdkConfiguration;
     private final JdkSearchUpdateChecker jdkSearchUpdateChecker;
@@ -52,12 +50,6 @@ public class AutoJdk
         this.autoJdkConfiguration = Objects.requireNonNull(autoJdkConfiguration);
         this.jdkSearchUpdateChecker = Objects.requireNonNull(jdkSearchUpdateChecker);
         this.clock = Objects.requireNonNull(clock);
-
-        //Find first caching repository
-        cachingJdkArchiveRepository = jdkArchiveRepositories.stream()
-                                                            .flatMap(r -> r instanceof CachingJdkArchiveRepository<?> ? Stream.of((CachingJdkArchiveRepository<?>)r) : Stream.of())
-                                                            .findFirst()
-                                                            .orElse(null);
     }
 
     public List<? extends ToolchainModel> generateToolchainsFromLocalJdks(ReleaseType releaseType)
@@ -163,7 +155,8 @@ public class AutoJdk
             try
             {
                 //Download a JDK archive
-                JdkArchive<?> downloadedJdk = attemptDownloadJdkFromRemoteRepository(searchRequest, compositeRepository, localJdk);
+                JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> downloadedJdk =
+                        attemptDownloadJdkFromRemoteRepository(searchRequest, compositeRepository, localJdk);
 
                 //If we get here, the search/check worked, so update the up-to-date metadata
                 jdkSearchUpdateChecker.saveLastCheckTime(searchRequest, Instant.now(clock));
@@ -182,6 +175,9 @@ public class AutoJdk
                     Path newJdkInstallDirectory = jdkInstallationTarget.installJdkFromArchive(downloadedJdk.getFile(), downloadedJdkMetadata);
 
                     log.info("Installed new JDK to: " + newJdkInstallDirectory);
+
+                    //Tell repository to clean up the archive - if it was a temp file the repo will delete it, if it's cached then nothing will happen
+                    compositeRepository.cleanUpAfterArchiveUse(downloadedJdk);
 
                     //Rescan - should find it now
                     localJdk = findMatchingLocalJdk(searchRequest);
@@ -208,7 +204,7 @@ public class AutoJdk
         throw new JdkNotFoundException("Could not find suitable JDK");
     }
 
-    private <A extends JdkArtifact> JdkArchive<?> attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository<A> repository, LocalJdk bestMatchingLocalJdk)
+    private <A extends JdkArtifact> JdkArchive<A> attemptDownloadJdkFromRemoteRepository(JdkSearchRequest searchRequest, JdkArchiveRepository<A> repository, LocalJdk bestMatchingLocalJdk)
     throws JdkRepositoryException
     {
         Collection<? extends A> searchResults = repository.search(searchRequest);
@@ -225,51 +221,9 @@ public class AutoJdk
         log.info("Installing JDK from " + selectedJdk);
         JdkArchive<A> downloadedArchive = repository.resolveArchive(selectedJdk);
 
-        //Save to cache?
-        if (cachingJdkArchiveRepository != null)
-        {
-            //Save the temp download archive to the cache
-            JdkArchive<?> cachedArchive = saveToCache(downloadedArchive, repository);
+        //Each repository will now be responsible for its own caching
 
-            //Can now delete the temp archive if the downloaded archive and cached one is different
-            if (!cachedArchive.getFile().equals(downloadedArchive.getFile()))
-                repository.purgeResolvedArchive(downloadedArchive);
-
-            return cachedArchive;
-        }
-        else
-        {
-            //Just return the original, no caching
-            //TODO in this case, there's a temp file that remains
-            return downloadedArchive;
-        }
-    }
-
-    @VisibleForTesting
-    <A extends JdkArtifact> JdkArchive<?> saveToCache(JdkArchive<A> archive, JdkArchiveRepository<A> repository)
-    throws JdkRepositoryException
-    {
-        //Unwrap if we are in a composite - need to be able to detect if the underlying repository is from a caching repository
-        if (archive.getArtifact() instanceof CompositeJdkArchiveRepository.WrappedJdkArtifact<?>)
-            return saveToCacheFromComposite((CompositeJdkArchiveRepository.WrappedJdkArtifact<?>) archive.getArtifact(), archive.getFile());
-
-        //If we are already in a caching repository, archive is already cache so no need to do anything
-        if (repository instanceof CachingJdkArchiveRepository<?>)
-            return archive;
-
-        //Otherwise we need to find another caching repository and use it
-        JdkArchive<?> cachedArchive = cachingJdkArchiveRepository.saveToCache(archive);
-
-        //And can purge original temp archive now we have the cached one
-        repository.purgeResolvedArchive(archive);
-
-        return cachedArchive;
-    }
-
-    private <A extends JdkArtifact> JdkArchive<?> saveToCacheFromComposite(CompositeJdkArchiveRepository.WrappedJdkArtifact<A> wrappedJdkArtifact, Path archiveFile)
-    throws JdkRepositoryException
-    {
-        return saveToCache(new JdkArchive<>(wrappedJdkArtifact.getWrappedArtifact(), archiveFile), wrappedJdkArtifact.getSourceRepository());
+        return downloadedArchive;
     }
 
     private boolean remoteJdkMatchesLocalJdk(JdkArtifact remoteJdk, LocalJdk localJdk)
@@ -373,15 +327,11 @@ public class AutoJdk
         {
             for (JdkArchiveRepository<?> jdkArchiveRepository : jdkArchiveRepositories)
             {
-                if (jdkArchiveRepository instanceof CachingJdkArchiveRepository<?>)
-                {
-                    CachingJdkArchiveRepository<?> cachingJdkArchiveRepository = (CachingJdkArchiveRepository<?>)jdkArchiveRepository;
-                    Collection<? extends JdkArchive<?>> purgedFromCache = cachingJdkArchiveRepository.purgeCache(searchRequest);
+                Collection<? extends JdkArchive<?>> purgedFromCache = jdkArchiveRepository.purge(searchRequest);
 
-                    for (JdkArchive<?> purged : purgedFromCache)
-                    {
-                        log.info("Deleted from cache: " + purged.getArtifact() + " (" + purged.getFile() + ")");
-                    }
+                for (JdkArchive<?> purged : purgedFromCache)
+                {
+                    log.info("Deleted from cache: " + purged.getArtifact() + " (" + purged.getFile() + ")");
                 }
             }
         }

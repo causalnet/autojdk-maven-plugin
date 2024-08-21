@@ -1,6 +1,9 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import eu.hansolo.jdktools.Architecture;
+import eu.hansolo.jdktools.OperatingSystem;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
+import org.apache.maven.artifact.versioning.VersionRange;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,8 +19,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.*;
@@ -37,9 +42,6 @@ class TestAutoJdk
     @Mock
     private JdkArchiveRepository<JdkArtifact> jdkArchiveRepository;
 
-    @Mock(strictness = Mock.Strictness.LENIENT)
-    private CachingJdkArchiveRepository<JdkArtifact> cachingJdkArchiveRepository;
-
     @Mock
     private JdkSearchUpdateChecker jdkSearchUpdateChecker;
 
@@ -47,7 +49,7 @@ class TestAutoJdk
     private Clock clock;
 
     @Nested
-    class Caching
+    class Full
     {
         @TempDir
         private Path tempDir;
@@ -68,122 +70,101 @@ class TestAutoJdk
         }
 
         @BeforeEach
-        void setUpMockCachingRepository()
-        throws JdkRepositoryException
-        {
-            when(cachingJdkArchiveRepository.saveToCache(any())).thenAnswer(invocation ->
-            {
-                JdkArchive<?> arc = invocation.getArgument(0);
-                JdkArtifact a = arc.getArtifact();
-                Path cachedFile = repositoryDir.resolve(arc.getFile().getFileName());
-                Files.copy(arc.getFile(), cachedFile);
-                return new JdkArchive<>(new CachedJdkArtifact(a), cachedFile);
-            });
-        }
-
-        @BeforeEach
         void setUpAutoJdk()
         {
             autoJdk = new AutoJdk(localJdkResolver, jdkInstallationTarget,
-                              List.of(jdkArchiveRepository, cachingJdkArchiveRepository),
+                              List.of(jdkArchiveRepository),
                               StandardVersionTranslationScheme.UNMODIFIED,
                               AutoJdkConfiguration.defaultAutoJdkConfiguration(), jdkSearchUpdateChecker, clock);
         }
 
-        /**
-         * Saves a non-cached archive to a caching repository.
-         */
         @Test
-        void saveToCacheFromNormalRepository()
+        void localJdkAlreadyExistsAndNoRemoteRepositories()
         throws Exception
         {
-            JdkArtifact artifact = new SimpleJdkArtifact("zulu", "7.0.2", ArchiveType.TAR_GZ);
-            Path archiveFile = Files.createTempFile(downloadDir, "artifact", ".tar.gz");
-            JdkArchive<JdkArtifact> originalArchive = new JdkArchive<>(artifact, archiveFile);
+            LocalJdk jdk = new AutoJdkInstalledJdkSystem.AutoJdkInstallation(tempDir.resolve("myjdk"), new LocalJdkMetadata(
+                    "zulu", "17.0.0", ReleaseType.GA, Architecture.X86_64, OperatingSystem.LINUX
+            ));
+            when(localJdkResolver.getInstalledJdks(eq(ReleaseType.GA))).thenAnswer(inv -> List.of(jdk));
 
-            //Save to cache
-            JdkArchive<?> cachedArchive = autoJdk.saveToCache(originalArchive, jdkArchiveRepository);
+            JdkSearchRequest request = new JdkSearchRequest(
+                    VersionRange.createFromVersionSpec("[17, 18)"),
+                    Architecture.X86_64,
+                    OperatingSystem.LINUX,
+                    null,
+                    ReleaseType.GA);
 
-            //Original archive is in downloads dir, but after caching it is now in the repository
-            assertThat(originalArchive.getFile()).hasParent(downloadDir);
-            assertThat(cachedArchive.getFile()).hasParent(repositoryDir);
+            LocalJdk result = autoJdk.prepareJdk(request);
 
-            //Check that the artifact has the same values but the cached one is cached
-            assertThat(cachedArchive.getArtifact()).isInstanceOf(CachedJdkArtifact.class);
-            CachedJdkArtifact cachedArtifact = (CachedJdkArtifact)cachedArchive.getArtifact();
-            assertThat(cachedArtifact.getOriginalArtifact()).isSameAs(artifact);
+            assertThat(result).isEqualTo(jdk);
+        }
+
+        @Test
+        void noJdkFound()
+        throws Exception
+        {
+            when(localJdkResolver.getInstalledJdks(eq(ReleaseType.GA))).thenAnswer(inv -> List.of());
+
+            JdkSearchRequest request = new JdkSearchRequest(
+                    VersionRange.createFromVersionSpec("[17, 18)"),
+                    Architecture.X86_64,
+                    OperatingSystem.LINUX,
+                    null,
+                    ReleaseType.GA);
+
+            assertThatExceptionOfType(JdkNotFoundException.class).isThrownBy(() -> autoJdk.prepareJdk(request));
         }
 
         /**
-         * Saving an artifact that is already from a caching repository should perform no additional caching.
+         * An existing system with JDK 17.0.0 searches for updates and finds JDK 17.0.1 available, installs the new version and uses it.
          */
         @Test
-        void saveToCacheFromCachingRepository()
+        void updateToMoreRecentJdk()
         throws Exception
         {
-            JdkArtifact artifact = new SimpleJdkArtifact("zulu", "7.0.2", ArchiveType.TAR_GZ);
-            Path archiveFile = Files.createTempFile(downloadDir, "artifact", ".tar.gz"); //in downloads, but source will be from caching repository
-            JdkArchive<JdkArtifact> originalArchive = new JdkArchive<>(artifact, archiveFile);
+            AtomicBoolean newJdkInstalled = new AtomicBoolean(false);
 
-            //Save to cache
-            JdkArchive<?> cachedArchive = autoJdk.saveToCache(originalArchive, cachingJdkArchiveRepository);
+            LocalJdk jdk = new AutoJdkInstalledJdkSystem.AutoJdkInstallation(tempDir.resolve("myjdk"), new LocalJdkMetadata(
+                    "zulu", "17.0.0", ReleaseType.GA, Architecture.X86_64, OperatingSystem.LINUX
+            ));
 
-            //Verify archive wasn't actually cached again
-            verifyNoInteractions(cachingJdkArchiveRepository);
+            //New JDK that was downloaded and eventually is installed
+            LocalJdk newJdk = new AutoJdkInstalledJdkSystem.AutoJdkInstallation(tempDir.resolve("myjdk"), new LocalJdkMetadata(
+                    "zulu", "17.0.1", ReleaseType.GA, Architecture.X86_64, OperatingSystem.LINUX
+            ));
+            SimpleJdkArtifact remoteJdk = new SimpleJdkArtifact("zulu", "17.0.1", ArchiveType.TAR_GZ);
 
-            //Check that the artifact returned is the original one (no extra caching)
-            assertThat(cachedArchive).isSameAs(originalArchive);
-        }
+            //Once the remote JDK has been downloaded, this is where it is downloaded to
+            JdkArchive<SimpleJdkArtifact> downloadedJdkArchive = new JdkArchive<>(remoteJdk, tempDir.resolve("downloaded-jdk.tar.gz"));
 
-        @Test
-        void compositeUncachedOriginalArtifact()
-        throws Exception
-        {
-            CompositeJdkArchiveRepository compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
-                                                                                                  List.of(jdkArchiveRepository));
+            when(jdkInstallationTarget.installJdkFromArchive(eq(downloadedJdkArchive.getFile()), any())).then(inv ->
+            {
+                newJdkInstalled.set(true);
+                return tempDir.resolve("myjdknew");
+            });
+            when(localJdkResolver.getInstalledJdks(eq(ReleaseType.GA))).thenAnswer(inv ->
+            {
+                if (newJdkInstalled.get())
+                    return List.of(jdk, newJdk);
+                else
+                    return List.of(jdk);
+            });
 
-            JdkArtifact artifact = new SimpleJdkArtifact("zulu", "7.0.2", ArchiveType.TAR_GZ);
-            Path archiveFile = Files.createTempFile(downloadDir, "artifact", ".tar.gz");
+            JdkSearchRequest request = new JdkSearchRequest(
+                    VersionRange.createFromVersionSpec("[17, 18)"),
+                    Architecture.X86_64,
+                    OperatingSystem.LINUX,
+                    null,
+                    ReleaseType.GA);
 
-            CompositeJdkArchiveRepository.WrappedJdkArtifact<JdkArtifact> wrappedArtifact = new CompositeJdkArchiveRepository.WrappedJdkArtifact<>(jdkArchiveRepository, artifact);
-            JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> originalArchive = new JdkArchive<>(wrappedArtifact, archiveFile);
+            when(jdkArchiveRepository.search(any())).thenAnswer(inv -> List.of(remoteJdk));
+            when(jdkArchiveRepository.resolveArchive(eq(remoteJdk))).thenAnswer(inv -> downloadedJdkArchive);
 
-            //Save to cache
-            JdkArchive<?> cachedArchive = autoJdk.saveToCache(originalArchive, compositeRepository);
+            LocalJdk result = autoJdk.prepareJdk(request);
 
-            //Original archive is in downloads dir, but after caching it is now in the repository
-            assertThat(originalArchive.getFile()).hasParent(downloadDir);
-            assertThat(cachedArchive.getFile()).hasParent(repositoryDir);
+            verify(jdkInstallationTarget).installJdkFromArchive(eq(downloadedJdkArchive.getFile()), any());
 
-            //Check that the artifact has the same values but the cached one is cached
-            assertThat(cachedArchive.getArtifact()).isInstanceOf(CachedJdkArtifact.class);
-            CachedJdkArtifact cachedArtifact = (CachedJdkArtifact)cachedArchive.getArtifact();
-            assertThat(cachedArtifact.getOriginalArtifact()).isSameAs(artifact);
-        }
-
-        @Test
-        void compositeCachedOriginalArtifact()
-        throws Exception
-        {
-            CompositeJdkArchiveRepository compositeRepository = new CompositeJdkArchiveRepository(CompositeJdkArchiveRepository.SearchType.EXHAUSTIVE,
-                                                                                                  List.of(cachingJdkArchiveRepository));
-
-            JdkArtifact artifact = new SimpleJdkArtifact("zulu", "7.0.2", ArchiveType.TAR_GZ);
-            Path archiveFile = Files.createTempFile(downloadDir, "artifact", ".tar.gz");
-
-            CompositeJdkArchiveRepository.WrappedJdkArtifact<JdkArtifact> wrappedArtifact = new CompositeJdkArchiveRepository.WrappedJdkArtifact<>(cachingJdkArchiveRepository, artifact);
-            JdkArchive<CompositeJdkArchiveRepository.WrappedJdkArtifact<?>> originalArchive = new JdkArchive<>(wrappedArtifact, archiveFile);
-
-            //Save to cache
-            JdkArchive<?> cachedArchive = autoJdk.saveToCache(originalArchive, compositeRepository);
-
-            //Verify archive wasn't actually cached again
-            verifyNoInteractions(cachingJdkArchiveRepository);
-
-            //Check that the artifact returned is the original one (no extra caching)
-            //Might have some unwrapping but the coordinates of both artifacts should be the same
-            assertThat(cachedArchive.getFile()).isEqualTo(originalArchive.getFile());
-            assertThat(cachedArchive.getArtifact()).isEqualTo(originalArchive.getArtifact().getWrappedArtifact());
+            assertThat(result).isEqualTo(newJdk);
         }
     }
 

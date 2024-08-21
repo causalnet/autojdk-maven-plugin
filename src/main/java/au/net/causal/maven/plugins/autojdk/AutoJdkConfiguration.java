@@ -72,7 +72,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
      * Default JDK repositories are just the foojay repository.
      */
     static final List<JdkRepository> DEFAULT_JDK_REPOSITORIES = List.of(
-            new FoojayDiscoRepository()
+            new FoojayDiscoRepository(new FoojayDiscoRepository.LocalRepositoryCache("au.net.causal.autojdk.jdk"))
     );
 
     private static final Logger log = LoggerFactory.getLogger(AutoJdkConfiguration.class);
@@ -335,6 +335,29 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
 
     public static class FoojayDiscoRepository implements JdkRepository
     {
+        private LocalRepositoryCache localRepositoryCache;
+
+        public FoojayDiscoRepository()
+        {
+            this(null);
+        }
+
+        public FoojayDiscoRepository(LocalRepositoryCache localRepositoryCache)
+        {
+            this.localRepositoryCache = localRepositoryCache;
+        }
+
+        @XmlElement(name = "local-repository-cache")
+        public LocalRepositoryCache getLocalRepositoryCache()
+        {
+            return localRepositoryCache;
+        }
+
+        public void setLocalRepositoryCache(LocalRepositoryCache localRepositoryCache)
+        {
+            this.localRepositoryCache = localRepositoryCache;
+        }
+
         @Override
         public JdkArchiveRepository<?> createJdkArchiveRepository(
                 RepositorySystem repositorySystem,
@@ -347,7 +370,20 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         )
         {
             if (offlineMode)
-                return null;
+            {
+                //If local-repo caching is enabled it's still possible to resolve from the local repo even when offline
+                if (getLocalRepositoryCache() != null && getLocalRepositoryCache().getJdkGroupId() != null) {
+                    return new LocalRepositoryCachingRepository<>(
+                            getLocalRepositoryCache().getJdkGroupId(),
+                            new NullJdkArchiveRepository(),
+                            repositorySystem, repositorySystemSession, tempDownloadDirectory,xmlManager);
+                }
+                //No caching and not online, can't use this repo at all
+                else
+                    return null;
+            }
+
+            //Not offline if we get here
 
             HttpClient.Builder httpClientBuilder = HttpClient.newBuilder();
 
@@ -367,22 +403,74 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
             FileDownloader fileDownloader = new HttpClientFileDownloader(tempDownloadDirectory, httpClientBuilder);
             fileDownloader.addDownloadProgressListener(new MavenDownloadProgressAdapter(repositorySystemSession));
 
-            return new FoojayOpenApiJdkRepository(foojayClient, fileDownloader);
+            JdkArchiveRepository<?> repository = new FoojayOpenApiJdkRepository(foojayClient, fileDownloader);
+
+            //If local repo cache is enabled, wrap foojay repo with a caching layer
+            if (getLocalRepositoryCache() != null && getLocalRepositoryCache().getJdkGroupId() != null)
+            {
+                repository = new LocalRepositoryCachingRepository<>(
+                        getLocalRepositoryCache().getJdkGroupId(),
+                        repository,
+                        repositorySystem, repositorySystemSession, tempDownloadDirectory,xmlManager);
+            }
+
+            return repository;
         }
-        //TODO local repo caching config
 
         @Override
         public boolean equals(Object o)
         {
             if (this == o) return true;
             if (!(o instanceof FoojayDiscoRepository)) return false;
-            return true;
+            FoojayDiscoRepository that = (FoojayDiscoRepository) o;
+            return Objects.equals(localRepositoryCache, that.localRepositoryCache);
         }
 
         @Override
         public int hashCode()
         {
-            return Objects.hash();
+            return Objects.hashCode(localRepositoryCache);
+        }
+
+        public static class LocalRepositoryCache
+        {
+            private String jdkGroupId;
+
+            public LocalRepositoryCache()
+            {
+                this(null);
+            }
+
+            public LocalRepositoryCache(String jdkGroupId)
+            {
+                this.jdkGroupId = jdkGroupId;
+            }
+
+            @XmlElement(name = "jdk-group-id")
+            public String getJdkGroupId()
+            {
+                return jdkGroupId;
+            }
+
+            public void setJdkGroupId(String jdkGroupId)
+            {
+                this.jdkGroupId = jdkGroupId;
+            }
+
+            @Override
+            public boolean equals(Object o)
+            {
+                if (this == o) return true;
+                if (!(o instanceof LocalRepositoryCache)) return false;
+                LocalRepositoryCache that = (LocalRepositoryCache) o;
+                return Objects.equals(jdkGroupId, that.jdkGroupId);
+            }
+
+            @Override
+            public int hashCode()
+            {
+                return Objects.hashCode(jdkGroupId);
+            }
         }
     }
 
@@ -466,11 +554,10 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
 
             VendorService userConfiguredVendorService = new UserConfiguredVendorService(allVendorService, autoJdkConfiguration);
 
-
             return new MavenArtifactJdkArchiveRepository(
                     repositorySystem, repositorySystemSession, List.of(remoteRepo),
                     getJdkGroupId(), userConfiguredVendorService,
-                    xmlManager, tempDownloadDirectory);
+                    xmlManager);
         }
 
         private RemoteRepository jdkRemoteRepository(RepositorySystemSession repoSession)

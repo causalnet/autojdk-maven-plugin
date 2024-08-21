@@ -4,10 +4,6 @@ import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
-import org.apache.maven.RepositoryUtils;
-import org.apache.maven.artifact.repository.ArtifactRepositoryPolicy;
-import org.apache.maven.artifact.repository.MavenArtifactRepository;
-import org.apache.maven.artifact.repository.layout.DefaultRepositoryLayout;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.profile.activation.FileProfileActivator;
 import org.apache.maven.model.profile.activation.JdkVersionProfileActivator;
@@ -22,9 +18,6 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
-import org.eclipse.aether.repository.Authentication;
-import org.eclipse.aether.repository.Proxy;
-import org.eclipse.aether.repository.RemoteRepository;
 
 import javax.xml.datatype.DatatypeFactory;
 import java.io.File;
@@ -199,27 +192,6 @@ public abstract class AbstractAutoJdkMojo extends AbstractMojo
         }
 
         executeImpl();
-    }
-
-    private RemoteRepository jdkRemoteRepository(AutoJdkConfiguration.JdkMavenRepository r)
-    {
-        MavenArtifactRepository repo = new MavenArtifactRepository(
-                r.getId(), r.getUrl(), new DefaultRepositoryLayout(),
-                new ArtifactRepositoryPolicy(true, ArtifactRepositoryPolicy.UPDATE_POLICY_ALWAYS, ArtifactRepositoryPolicy.CHECKSUM_POLICY_IGNORE),
-                new ArtifactRepositoryPolicy(true, ArtifactRepositoryPolicy.UPDATE_POLICY_NEVER, ArtifactRepositoryPolicy.CHECKSUM_POLICY_IGNORE)
-        );
-
-        RemoteRepository rRepo = RepositoryUtils.toRepo(repo);
-
-        Proxy proxy = repoSession.getProxySelector().getProxy(rRepo);
-        if (proxy != null)
-            rRepo = new RemoteRepository.Builder(rRepo).setProxy(proxy).build();
-
-        Authentication auth = repoSession.getAuthenticationSelector().getAuthentication(rRepo);
-        if (auth != null)
-            rRepo = new RemoteRepository.Builder(rRepo).setAuthentication(auth).build();
-
-        return rRepo;
     }
 
     private void configureAutoJdkUpdatePolicy(AutoJdkConfiguration configuration)
