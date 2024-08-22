@@ -6,6 +6,5 @@
             <url>http://localhost:8081/galah-repo/maven2/</url>
             <jdk-group-id>au.net.causal.autojdk.jdk</jdk-group-id>
         </maven-repository>
-        <foojay-disco />
     </jdk-repositories>
 </autojdk-configuration>
