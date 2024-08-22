@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.StringJoiner;
 
 /**
  * Wrapper for another JDK archive repository that caches artifacts in the local Maven repository under
@@ -216,5 +217,14 @@ implements JdkArchiveRepository<A>
         }
 
         return purgedArchives;
+    }
+
+    @Override
+    public String toString()
+    {
+        return new StringJoiner(", ", LocalRepositoryCachingRepository.class.getSimpleName() + "[", "]")
+                .add("repository=" + repository)
+                .add("groupId=" + groupId)
+                .toString();
     }
 }
