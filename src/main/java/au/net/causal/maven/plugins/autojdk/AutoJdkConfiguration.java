@@ -373,9 +373,16 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
             {
                 //If local-repo caching is enabled it's still possible to resolve from the local repo even when offline
                 if (getLocalRepositoryCache() != null && getLocalRepositoryCache().getJdkGroupId() != null) {
+                    //Make a local-only Maven artifact repository for offline mode so we can still search it
+                    List<RemoteRepository> noRemoteRepositories = List.of();
+                    VendorService offlineVendorService = new OfflineDistributionsVendorService();
+                    MavenArtifactJdkArchiveRepository localOnlyMavenArchiveRepository = new MavenArtifactJdkArchiveRepository(
+                            repositorySystem, repositorySystemSession,
+                            noRemoteRepositories, getLocalRepositoryCache().getJdkGroupId(),
+                            offlineVendorService, xmlManager);
                     return new LocalRepositoryCachingRepository<>(
                             getLocalRepositoryCache().getJdkGroupId(),
-                            new NullJdkArchiveRepository(),
+                            localOnlyMavenArchiveRepository,
                             repositorySystem, repositorySystemSession, tempDownloadDirectory,xmlManager);
                 }
                 //No caching and not online, can't use this repo at all
