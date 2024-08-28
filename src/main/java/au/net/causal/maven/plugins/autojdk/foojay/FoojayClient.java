@@ -95,11 +95,38 @@ public class FoojayClient
         List<? extends JdkDistribution> results = getDistributions(true, false, null);
         return results.stream()
                 .flatMap(d -> d.getVersions().stream())
+                .filter(this::isValidJavaVersionFromDistribution)
                 .map(v -> FoojayOpenApiArtifact.mavenSafeVersionFromPkgVersion(v).getMajorVersion())
                 .distinct()
                 .sorted()
                 .map(this::createMajorVersion)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Some distributions have weird / bugged version numbers such as "2264" so filter those out.
+     *
+     * @param v version string.
+     *
+     * @return true if the version string should be included.
+     */
+    private boolean isValidJavaVersionFromDistribution(String v)
+    {
+        //Invalid version numbers are parsable integers that are huge (> 1000)
+
+        //Attempt to parse
+        try
+        {
+            int vint = Integer.parseInt(v);
+
+            //Only allow full version numbers < 1000, otherwise likely they are bad ones (e.g. 1264)
+            return vint < 1000;
+        }
+        catch (NumberFormatException e)
+        {
+            //Not a full integer, so it can pass the filter
+            return true;
+        }
     }
 
     private MajorVersion createMajorVersion(int majorVersionNumber)
