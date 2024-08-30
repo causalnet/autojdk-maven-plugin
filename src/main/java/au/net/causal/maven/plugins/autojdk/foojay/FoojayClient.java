@@ -4,7 +4,9 @@ import au.net.causal.maven.plugins.autojdk.foojay.openapi.DefaultApi;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiClient;
 import au.net.causal.maven.plugins.autojdk.foojay.openapi.handler.ApiException;
 import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Api;
@@ -58,18 +60,34 @@ public class FoojayClient
     public static ApiClient createDefaultApiClient()
     {
         ApiClient apiClient = new ApiClient();
-        apiClient.setObjectMapper(apiClient.getObjectMapper().registerModule(new SimpleModule()
-                .addDeserializer(OperatingSystem.class, new ApiEnumDeserializer<>(OperatingSystem::fromText))
-                .addDeserializer(Architecture.class, new ApiEnumDeserializer<>(Architecture::fromText))
-                .addDeserializer(ArchiveType.class, new ApiEnumDeserializer<>(ArchiveType::fromText))
-                .addDeserializer(ReleaseStatus.class, new ApiEnumDeserializer<>(ReleaseStatus::fromText))
-                .addDeserializer(LibCType.class, new ApiEnumDeserializer<>(LibCType::fromText))
-        )
-               .configure(JsonParser.Feature.ALLOW_TRAILING_COMMA, true)); //TODO how to do this in non-deprecated way???
+        ObjectMapper om = apiClient.getObjectMapper().registerModule(new SimpleModule()
+                        .addDeserializer(OperatingSystem.class, new ApiEnumDeserializer<>(OperatingSystem::fromText))
+                        .addDeserializer(Architecture.class, new ApiEnumDeserializer<>(Architecture::fromText))
+                        .addDeserializer(ArchiveType.class, new ApiEnumDeserializer<>(ArchiveType::fromText))
+                        .addDeserializer(ReleaseStatus.class, new ApiEnumDeserializer<>(ReleaseStatus::fromText))
+                        .addDeserializer(LibCType.class, new ApiEnumDeserializer<>(LibCType::fromText)));
+        om = enableObjectMapperJsonFeatures(om, JsonReadFeature.ALLOW_TRAILING_COMMA);
+        apiClient.setObjectMapper(om);
 
         apiClient.updateBaseUri("https://api.foojay.io");
 
         return apiClient;
+    }
+
+    private static ObjectMapper enableObjectMapperJsonFeatures(ObjectMapper objectMapper, JsonReadFeature... features)
+    {
+        if (objectMapper instanceof JsonMapper)
+        {
+            JsonMapper jsonMapper = (JsonMapper)objectMapper;
+            JsonMapper.Builder m = jsonMapper.rebuild();
+            for (JsonReadFeature feature : features)
+            {
+                m = m.enable(feature);
+            }
+            return m.build();
+        }
+        else //Not a JSON object mapper, so JsonReadFeatures won't work anyway
+            return objectMapper;
     }
 
     public List<? extends JdkDistribution> getDistributions(
