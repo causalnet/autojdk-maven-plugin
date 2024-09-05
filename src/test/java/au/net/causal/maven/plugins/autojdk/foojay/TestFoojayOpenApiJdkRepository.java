@@ -3,7 +3,7 @@ package au.net.causal.maven.plugins.autojdk.foojay;
 import au.net.causal.maven.plugins.autojdk.FileDownloader;
 import au.net.causal.maven.plugins.autojdk.JdkArchive;
 import au.net.causal.maven.plugins.autojdk.JdkSearchRequest;
-import au.net.causal.maven.plugins.autojdk.ReleaseType;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.Latest;
 import eu.hansolo.jdktools.OperatingSystem;

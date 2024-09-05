@@ -334,6 +334,16 @@
                         <source>src/main/java/au/net/causal/maven/plugins/autojdk/xml/config/AutoJdkConfiguration.java</source>
                         <source>src/main/java/au/net/causal/maven/plugins/autojdk/xml/metadata</source>
                     </sources>
+                    <transformSchemas>
+                        <transformSchema>
+                            <uri>https://autojdk.causal.net.au/configuration/1.0</uri>
+                            <toFile>autojdk-configuration.xsd</toFile>
+                        </transformSchema>
+                        <transformSchema>
+                            <uri>https://autojdk.causal.net.au/metadata/1.0</uri>
+                            <toFile>autojdk-metadata.xsd</toFile>
+                        </transformSchema>
+                    </transformSchemas>
                 </configuration>
             </plugin>
 
@@ -434,8 +444,14 @@
                         <configuration>
                             <artifacts>
                                 <artifact>
-                                    <file>${project.build.directory}/generated-resources/schemagen/schema1.xsd</file>
+                                    <file>${project.build.directory}/generated-resources/schemagen/autojdk-configuration.xsd</file>
                                     <type>xsd</type>
+                                    <classifier>configuration</classifier>
+                                </artifact>
+                                <artifact>
+                                    <file>${project.build.directory}/generated-resources/schemagen/autojdk-metadata.xsd</file>
+                                    <type>xsd</type>
+                                    <classifier>metadata</classifier>
                                 </artifact>
                             </artifacts>
                         </configuration>

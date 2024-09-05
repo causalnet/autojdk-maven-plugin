@@ -1,4 +1,4 @@
-<jdk>
+<jdk xmlns='https://autojdk.causal.net.au/metadata/1.0'>
     <archiveType>ZIP</archiveType>
     <releaseType>GA</releaseType>
 </jdk>

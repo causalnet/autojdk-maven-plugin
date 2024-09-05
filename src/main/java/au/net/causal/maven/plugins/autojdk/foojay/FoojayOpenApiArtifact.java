@@ -1,8 +1,8 @@
 package au.net.causal.maven.plugins.autojdk.foojay;
 
-import au.net.causal.maven.plugins.autojdk.ArchiveType;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ArchiveType;
 import au.net.causal.maven.plugins.autojdk.JdkArtifact;
-import au.net.causal.maven.plugins.autojdk.ReleaseType;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import com.google.common.annotations.VisibleForTesting;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;

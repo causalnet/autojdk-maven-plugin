@@ -1,4 +1,4 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.xml.metadata;
 
 public enum ArchiveType
 {

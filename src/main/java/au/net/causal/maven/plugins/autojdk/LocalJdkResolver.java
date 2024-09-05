@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
+
 import java.util.Collection;
 
 /**

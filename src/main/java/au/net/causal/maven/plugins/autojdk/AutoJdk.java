@@ -3,6 +3,7 @@ package au.net.causal.maven.plugins.autojdk;
 import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
 import au.net.causal.maven.plugins.autojdk.xml.config.JdkUpdatePolicy;
 import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;

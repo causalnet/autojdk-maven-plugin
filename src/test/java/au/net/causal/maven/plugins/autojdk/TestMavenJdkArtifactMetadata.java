@@ -1,6 +1,8 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ArchiveType;
 import au.net.causal.maven.plugins.autojdk.xml.metadata.MavenJdkArtifactMetadata;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import jakarta.xml.bind.JAXB;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -18,26 +20,24 @@ class TestMavenJdkArtifactMetadata
 
     @Test
     void testSerialize()
-    throws Exception
-    {
+    throws Exception {
         MavenJdkArtifactMetadata metadata = new MavenJdkArtifactMetadata(EnumSet.of(ArchiveType.ZIP, ArchiveType.TAR_GZ), ReleaseType.GA);
 
         String result;
-        try (StringWriter writer = new StringWriter())
-        {
+        try (StringWriter writer = new StringWriter()) {
             JAXB.marshal(metadata, writer);
             result = writer.toString();
         }
 
         log.debug(result);
-        assertThat(result).contains("<archiveType>ZIP</archiveType>");
-        assertThat(result).contains("<archiveType>TAR_GZ</archiveType>");
+        assertThat(result).contains("<archiveType>ZIP</archiveType>")
+                          .contains("<archiveType>TAR_GZ</archiveType>");
     }
 
     @Test
     void testDeserializeGaReleaseType()
     {
-        String xml = "<jdk><archiveType>ZIP</archiveType><releaseType>GA</releaseType></jdk>";
+        String xml = "<jdk xmlns='https://autojdk.causal.net.au/metadata/1.0'><archiveType>ZIP</archiveType><releaseType>GA</releaseType></jdk>";
         MavenJdkArtifactMetadata result;
         try (StringReader reader = new StringReader(xml))
         {
@@ -51,7 +51,7 @@ class TestMavenJdkArtifactMetadata
     @Test
     void testDeserializeEaReleaseType()
     {
-        String xml = "<jdk><archiveType>ZIP</archiveType><releaseType>EA</releaseType></jdk>";
+        String xml = "<jdk xmlns='https://autojdk.causal.net.au/metadata/1.0'><archiveType>ZIP</archiveType><releaseType>EA</releaseType></jdk>";
         MavenJdkArtifactMetadata result;
         try (StringReader reader = new StringReader(xml))
         {
@@ -65,7 +65,7 @@ class TestMavenJdkArtifactMetadata
     @Test
     void testDeserializeDefaultReleaseType()
     {
-        String xml = "<jdk><archiveType>ZIP</archiveType></jdk>";
+        String xml = "<jdk xmlns='https://autojdk.causal.net.au/metadata/1.0'><archiveType>ZIP</archiveType></jdk>";
         MavenJdkArtifactMetadata result;
         try (StringReader reader = new StringReader(xml))
         {

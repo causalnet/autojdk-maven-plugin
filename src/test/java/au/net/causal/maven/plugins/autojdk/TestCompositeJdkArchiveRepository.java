@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ArchiveType;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import com.google.common.collect.Iterables;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;

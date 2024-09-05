@@ -1,6 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.ReleaseType;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import org.apache.maven.artifact.versioning.ArtifactVersion;

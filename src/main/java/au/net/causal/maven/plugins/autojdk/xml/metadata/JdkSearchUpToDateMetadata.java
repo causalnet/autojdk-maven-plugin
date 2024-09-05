@@ -1,6 +1,5 @@
 package au.net.causal.maven.plugins.autojdk.xml.metadata;
 
-import au.net.causal.maven.plugins.autojdk.ReleaseType;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import jakarta.xml.bind.annotation.XmlElement;
