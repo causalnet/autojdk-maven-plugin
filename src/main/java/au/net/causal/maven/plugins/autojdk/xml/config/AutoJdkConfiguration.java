@@ -1,6 +1,16 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.xml.config;
 
-import au.net.causal.maven.plugins.autojdk.config.Activation;
+import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
+import au.net.causal.maven.plugins.autojdk.ExceptionalSupplier;
+import au.net.causal.maven.plugins.autojdk.FileDownloader;
+import au.net.causal.maven.plugins.autojdk.HttpClientFileDownloader;
+import au.net.causal.maven.plugins.autojdk.JdkArchiveRepository;
+import au.net.causal.maven.plugins.autojdk.LocalRepositoryCachingRepository;
+import au.net.causal.maven.plugins.autojdk.MavenArtifactJdkArchiveRepository;
+import au.net.causal.maven.plugins.autojdk.MavenDownloadProgressAdapter;
+import au.net.causal.maven.plugins.autojdk.MavenJdkProxySelector;
+import au.net.causal.maven.plugins.autojdk.UserConfiguredVendorService;
+import au.net.causal.maven.plugins.autojdk.VendorService;
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
 import au.net.causal.maven.plugins.autojdk.config.CombinableConfiguration;
@@ -54,7 +64,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     /**
      * Default vendor preference order.  These were selected to provide maximum compatibility.
      */
-    static final List<String> DEFAULT_VENDORS = List.of(
+    public static final List<String> DEFAULT_VENDORS = List.of(
             "zulu", //Zulu seems to always work and is present all the way back to JDK 6
             "liberica", //Next ones are pretty solid too but not available on all platforms
             "corretto",
@@ -66,19 +76,19 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     /**
      * Default JDK update policy duration of 1 day.
      */
-    static final JdkUpdatePolicySpec DEFAULT_JDK_UPDATE_POLICY = new JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED)));
+    public static final JdkUpdatePolicySpec DEFAULT_JDK_UPDATE_POLICY = new JdkUpdatePolicySpec(new JdkUpdatePolicy.EveryDuration(DatatypeFactory.newDefaultInstance().newDuration(true, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, 1, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED, DatatypeConstants.FIELD_UNDEFINED)));
 
     /**
      * Default JDK repositories are just the foojay repository.
      */
-    static final List<JdkRepository> DEFAULT_JDK_REPOSITORIES = List.of(
+    public static final List<JdkRepository> DEFAULT_JDK_REPOSITORIES = List.of(
             new FoojayDiscoRepository(new FoojayDiscoRepository.LocalRepositoryCache("au.net.causal.autojdk.jdk"))
     );
 
     private static final Logger log = LoggerFactory.getLogger(AutoJdkConfiguration.class);
 
     //Method instead of variable since extension exclusion element is mutable
-    static List<ExtensionExclusion> defaultExtensionExclusions()
+    public static List<ExtensionExclusion> defaultExtensionExclusions()
     {
         return List.of(new ExtensionExclusion("(,8)", "[8,9)"));
     }
@@ -333,6 +343,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
         );
     }
 
+    @XmlType(propOrder={})
     public static class FoojayDiscoRepository implements JdkRepository
     {
         private LocalRepositoryCache localRepositoryCache;
@@ -484,6 +495,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     /**
      * A Maven repository that contains downloadable JDKs and metadata.
      */
+    @XmlType(propOrder={})
     public static class JdkMavenRepository implements JdkRepository
     {
         private String id;

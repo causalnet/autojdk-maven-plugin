@@ -1,7 +1,7 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.Activation;
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.ActivationFile;
 import org.apache.maven.model.ActivationOS;
 import org.apache.maven.model.ActivationProperty;
 import org.apache.maven.model.Profile;

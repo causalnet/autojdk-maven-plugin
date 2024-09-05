@@ -1,8 +1,8 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.xml.config;
 
+import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import org.apache.maven.execution.DefaultMavenExecutionRequest;
-import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.path.DefaultPathTranslator;
 import org.apache.maven.model.path.ProfileActivationFilePathInterpolator;
@@ -28,7 +28,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String xml =
-            "<autojdk-configuration>" +
+            "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
             "</autojdk-configuration>";
         Path configFile = tempDir.resolve("config.xml");
         Files.writeString(configFile, xml);
@@ -46,7 +46,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String xml =
-            "<autojdk-configuration>" +
+            "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
             "    <vendors>" +
             "        <vendor>zulu</vendor>" +
             "        <vendor>*</vendor>" +
@@ -68,7 +68,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String baseXml =
-            "<autojdk-configuration>" +
+            "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
             "    <includes>" +
             "        <include>sub1.xml</include>" +
             "    </includes>" +
@@ -77,7 +77,7 @@ class TestAutoJdkConfigurationImporting
         Files.writeString(baseConfigFile, baseXml);
 
         String subXml =
-            "<autojdk-configuration>" +
+            "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
             "    <vendors>" +
             "        <vendor>zulu</vendor>" +
             "        <vendor>*</vendor>" +
@@ -99,7 +99,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String baseXml =
-            "<autojdk-configuration>" +
+            "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
             "    <includes>" +
             "        <include>sub1.xml</include>" +
             "    </includes>" +
@@ -113,7 +113,7 @@ class TestAutoJdkConfigurationImporting
         Files.writeString(baseConfigFile, baseXml);
 
         String subXml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <vendors>" +
                 "        <vendor>zulu</vendor>" +
                 "        <vendor>*</vendor>" +
@@ -135,7 +135,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String baseXml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <includes>" +
                 "        <include>sub1.xml</include>" +
                 "        <include>sub2.xml</include>" +
@@ -145,7 +145,7 @@ class TestAutoJdkConfigurationImporting
         Files.writeString(baseConfigFile, baseXml);
 
         String sub1Xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <vendors>" +
                 "        <vendor>zulu</vendor>" +
                 "        <vendor>*</vendor>" +
@@ -155,7 +155,7 @@ class TestAutoJdkConfigurationImporting
         Files.writeString(sub1ConfigFile, sub1Xml);
 
         String sub2Xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <vendors>" +
                 "        <vendor>zulu</vendor>" +
                 "        <vendor>temurin</vendor>" +
@@ -178,7 +178,7 @@ class TestAutoJdkConfigurationImporting
     throws Exception
     {
         String baseXml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <includes>" +
                 "        <include>sub1.xml</include>" +
                 "        <include>missing.xml</include>" +
@@ -188,7 +188,7 @@ class TestAutoJdkConfigurationImporting
         Files.writeString(baseConfigFile, baseXml);
 
         String sub1Xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <vendors>" +
                 "        <vendor>zulu</vendor>" +
                 "        <vendor>*</vendor>" +

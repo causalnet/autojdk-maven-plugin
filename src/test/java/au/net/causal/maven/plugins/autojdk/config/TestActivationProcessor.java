@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.Activation;
 import org.apache.maven.execution.DefaultMavenExecutionRequest;
 import org.apache.maven.execution.MavenExecutionRequest;
 import org.apache.maven.execution.MavenSession;

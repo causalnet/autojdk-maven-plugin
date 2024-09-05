@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.metadata.MavenJdkArtifactMetadata;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;

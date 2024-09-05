@@ -1,7 +1,9 @@
 package au.net.causal.maven.plugins.autojdk;
 
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;
+import au.net.causal.maven.plugins.autojdk.xml.config.JdkUpdatePolicy;
 import com.google.common.base.StandardSystemProperty;
 import jakarta.xml.bind.JAXBException;
 import org.apache.maven.execution.MavenSession;

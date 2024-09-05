@@ -1,6 +1,7 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.xml.config;
 
-import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
+import au.net.causal.maven.plugins.autojdk.AutoJdkXmlManager;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration.ExtensionExclusion;
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import jakarta.xml.bind.JAXB;
 import org.apache.maven.execution.DefaultMavenExecutionRequest;
@@ -32,6 +33,8 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.*;
 
+//TODO namespaces in XML schema and support for them
+//    specifically ignoring unknown namespaces when doing imports
 class TestAutoJdkConfiguration
 {
     private static final Logger log = LoggerFactory.getLogger(TestAutoJdkConfiguration.class);
@@ -61,7 +64,7 @@ class TestAutoJdkConfiguration
     @Test
     void testDeserialization()
     {
-        String xml = "<autojdk-configuration><vendors>" +
+        String xml = "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'><vendors>" +
                      "    <vendor>zulu</vendor>" +
                      "    <vendor>*</vendor>" +
                      "</vendors></autojdk-configuration>";
@@ -162,7 +165,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration><vendors>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'><vendors>" +
                 "    <vendor>zulu</vendor>" +
                 "    <vendor>*</vendor>" +
                 "</vendors></autojdk-configuration>";
@@ -199,7 +202,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <property>" +
                 "            <name>galahProperty</name>" +
@@ -230,7 +233,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <property>" +
                 "            <name>galahProperty</name>" +
@@ -266,7 +269,7 @@ class TestAutoJdkConfiguration
         Files.createFile(galahFile);
 
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <file>" +
                 "            <exists>" + galahFile.toAbsolutePath() + "</exists>" +
@@ -296,7 +299,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <file>" +
                 "            <exists>idonotexist.txt</exists>" +
@@ -327,7 +330,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <autojdk-version>[,100)</autojdk-version>" +
                 "    </activation>" +
@@ -351,7 +354,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <autojdk-version>[100,)</autojdk-version>" +
                 "    </activation>" +
@@ -376,7 +379,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <host-jdk>[17,)</host-jdk>" +
                 "    </activation>" +
@@ -404,7 +407,7 @@ class TestAutoJdkConfiguration
     throws Exception
     {
         String xml =
-                "<autojdk-configuration>" +
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
                 "    <activation>" +
                 "        <host-jdk>[17,)</host-jdk>" +
                 "    </activation>" +

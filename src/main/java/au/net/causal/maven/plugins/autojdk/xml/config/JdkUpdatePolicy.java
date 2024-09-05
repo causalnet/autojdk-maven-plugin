@@ -1,4 +1,4 @@
-package au.net.causal.maven.plugins.autojdk;
+package au.net.causal.maven.plugins.autojdk.xml.config;
 
 import jakarta.xml.bind.annotation.XmlTransient;
 import jakarta.xml.bind.annotation.XmlValue;

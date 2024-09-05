@@ -1,6 +1,8 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import com.google.common.annotations.VisibleForTesting;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
+import au.net.causal.maven.plugins.autojdk.xml.config.JdkUpdatePolicy;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
 import org.apache.maven.artifact.versioning.VersionRange;
 import org.apache.maven.toolchain.RequirementMatcherFactory;

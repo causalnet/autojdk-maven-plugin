@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<autojdk-configuration>
+<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>
     <jdk-repositories>
         <maven-repository>
             <id>my-jdk-repo</id>

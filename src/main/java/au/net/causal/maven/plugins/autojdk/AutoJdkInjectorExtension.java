@@ -1,6 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration.ExtensionExclusion;
 import au.net.causal.maven.plugins.autojdk.ExtensionExclusionProcessor.ExclusionProcessorException;
 import au.net.causal.maven.plugins.autojdk.config.ActivationProcessor;
 import au.net.causal.maven.plugins.autojdk.config.AutoJdkConfigurationException;

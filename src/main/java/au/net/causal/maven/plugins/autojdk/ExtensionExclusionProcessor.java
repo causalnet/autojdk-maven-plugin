@@ -1,7 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
-import au.net.causal.maven.plugins.autojdk.AutoJdkConfiguration.ExtensionExclusion;
-import org.apache.maven.MavenExecutionException;
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration.ExtensionExclusion;
 import org.apache.maven.artifact.versioning.InvalidVersionSpecificationException;
 import org.apache.maven.artifact.versioning.VersionRange;
 

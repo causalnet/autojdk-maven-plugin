@@ -1,4 +1,4 @@
-package au.net.causal.maven.plugins.autojdk.config;
+package au.net.causal.maven.plugins.autojdk.xml.config;
 
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElements;
@@ -9,6 +9,7 @@ import org.apache.maven.model.ActivationFile;
 /**
  * Controls how a configuration will be processed based on some conditions.  If more than one condition is specified, all conditions must match for activation to occur.
  */
+@XmlType(propOrder={})
 public class Activation
 {
     private String hostJdk;
@@ -89,7 +90,7 @@ public class Activation
     /**
      * Operating system attributes used for matching.
      */
-    @XmlType(name = "ActivationOperatingSystem")
+    @XmlType(name = "ActivationOperatingSystem", propOrder = {})
     public static class OperatingSystem
     {
         private String name;

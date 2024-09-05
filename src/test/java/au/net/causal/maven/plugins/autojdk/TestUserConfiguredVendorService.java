@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
 import au.net.causal.maven.plugins.autojdk.foojay.OfflineDistributionsVendorService;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

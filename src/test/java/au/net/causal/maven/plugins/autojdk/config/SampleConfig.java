@@ -1,5 +1,6 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.Activation;
 import jakarta.xml.bind.annotation.XmlElement;
 import jakarta.xml.bind.annotation.XmlElementWrapper;
 import jakarta.xml.bind.annotation.XmlRootElement;

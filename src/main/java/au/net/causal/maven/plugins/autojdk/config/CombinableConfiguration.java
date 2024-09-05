@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk.config;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.Activation;
+
 import java.util.List;
 
 /**

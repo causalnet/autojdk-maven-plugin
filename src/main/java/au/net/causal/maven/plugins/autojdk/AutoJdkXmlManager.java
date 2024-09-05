@@ -1,5 +1,9 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.JdkSearchUpToDateMetadata;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.MavenJdkArtifactMetadata;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.JAXBException;
 

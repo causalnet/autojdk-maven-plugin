@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.config.AutoJdkConfiguration;
+import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
 import eu.hansolo.jdktools.Architecture;
 import eu.hansolo.jdktools.OperatingSystem;
 import org.apache.maven.artifact.versioning.ArtifactVersion;
@@ -19,7 +21,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;

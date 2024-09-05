@@ -1,5 +1,7 @@
 package au.net.causal.maven.plugins.autojdk;
 
+import au.net.causal.maven.plugins.autojdk.xml.metadata.LocalJdkMetadata;
+
 import java.io.IOException;
 import java.nio.file.Path;
 
