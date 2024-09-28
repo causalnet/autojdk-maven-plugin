@@ -238,14 +238,20 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
     public static AutoJdkConfiguration fromFile(Path file, AutoJdkXmlManager xmlManager, ActivationProcessor activationProcessor, MavenSession session)
     throws AutoJdkXmlManager.XmlParseException, AutoJdkConfigurationException
     {
+        return fromFile(file, xmlManager, activationProcessor, session, defaultAutoJdkConfiguration());
+    }
+
+    private static AutoJdkConfiguration fromFile(Path file, AutoJdkXmlManager xmlManager, ActivationProcessor activationProcessor, MavenSession session, AutoJdkConfiguration baseConfig)
+    throws AutoJdkXmlManager.XmlParseException, AutoJdkConfigurationException
+    {
         //If no config file is present just use the default settings
         if (Files.notExists(file))
-            return AutoJdkConfiguration.defaultAutoJdkConfiguration();
+            return baseConfig;
 
         AutoJdkConfiguration configFromFile = xmlManager.parseFile(file, AutoJdkConfiguration.class);
 
-        //Start with defaults
-        var fullConfig = defaultAutoJdkConfiguration();
+        //Start with base
+        var fullConfig = baseConfig;
 
         //Check if we should process this file at all
         if (configFromFile.getActivation() == null || activationProcessor.isActive(configFromFile.getActivation(), session))
@@ -256,7 +262,7 @@ public class AutoJdkConfiguration implements CombinableConfiguration<AutoJdkConf
             for (Path includeFile : includeFiles) {
                 //Ignore files that are specified as import but do not exist
                 if (Files.exists(includeFile)) {
-                    AutoJdkConfiguration includeConfig = fromFile(includeFile, xmlManager, activationProcessor, session);
+                    AutoJdkConfiguration includeConfig = fromFile(includeFile, xmlManager, activationProcessor, session, new AutoJdkConfiguration());
 
                     if (includeConfig.getActivation() == null || activationProcessor.isActive(includeConfig.getActivation(), session))
                         fullConfig = fullConfig.combinedWith(includeConfig);

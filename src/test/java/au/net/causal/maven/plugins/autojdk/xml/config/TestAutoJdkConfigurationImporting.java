@@ -174,6 +174,89 @@ class TestAutoJdkConfigurationImporting
     }
 
     @Test
+    void subImportsWithNoVendorsDontBlowAwayOthersWithDefaults()
+    throws Exception
+    {
+        String baseXml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <includes>" +
+                "        <include>sub1.xml</include>" +
+                "        <include>sub2.xml</include>" +
+                "    </includes>" +
+                "</autojdk-configuration>";
+        Path baseConfigFile = tempDir.resolve("config.xml");
+        Files.writeString(baseConfigFile, baseXml);
+
+        String sub1Xml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path sub1ConfigFile = tempDir.resolve("sub1.xml");
+        Files.writeString(sub1ConfigFile, sub1Xml);
+
+        String sub2Xml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <jdk-update-policy>" +
+                "        <never />" +
+                "    </jdk-update-policy>" +
+                //no vendors
+                "</autojdk-configuration>";
+        Path sub2ConfigFile = tempDir.resolve("sub2.xml");
+        Files.writeString(sub2ConfigFile, sub2Xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(baseConfigFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
+
+        //Check that vendors are imported from sub2 - later imports clobber earlier ones
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(new JdkUpdatePolicy.Never());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void vendorDefaultsWorkWithSubImports()
+    throws Exception
+    {
+        String baseXml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <includes>" +
+                "        <include>sub1.xml</include>" +
+                "        <include>sub2.xml</include>" +
+                "    </includes>" +
+                "</autojdk-configuration>";
+        Path baseConfigFile = tempDir.resolve("config.xml");
+        Files.writeString(baseConfigFile, baseXml);
+
+        String sub1Xml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <jdk-update-policy>" +
+                "        <never />" +
+                "    </jdk-update-policy>" +
+                "</autojdk-configuration>";
+        Path sub1ConfigFile = tempDir.resolve("sub1.xml");
+        Files.writeString(sub1ConfigFile, sub1Xml);
+
+        String sub2Xml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <jdk-update-policy>" +
+                "        <always />" +
+                "    </jdk-update-policy>" +
+                //no vendors
+                "</autojdk-configuration>";
+        Path sub2ConfigFile = tempDir.resolve("sub2.xml");
+        Files.writeString(sub2ConfigFile, sub2Xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(baseConfigFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
+
+        //Check that vendors are imported from sub2 - later imports clobber earlier ones
+        assertThat(configuration.getVendors()).isEqualTo(AutoJdkConfiguration.DEFAULT_VENDORS);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(new JdkUpdatePolicy.Always());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
     void missingImportsAreIgnored()
     throws Exception
     {
@@ -196,6 +279,50 @@ class TestAutoJdkConfigurationImporting
                 "</autojdk-configuration>";
         Path sub1ConfigFile = tempDir.resolve("sub1.xml");
         Files.writeString(sub1ConfigFile, sub1Xml);
+
+        AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(baseConfigFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
+
+        //Check that vendors are imported from sub2 - later imports clobber earlier ones
+        assertThat(configuration.getVendors()).containsExactly("zulu", AutoJdkConfiguration.WILDCARD_VENDOR);
+        assertThat(configuration.getJdkUpdatePolicy().getValue()).isEqualTo(AutoJdkConfiguration.DEFAULT_JDK_UPDATE_POLICY.getValue());
+        assertThat(configuration.getExtensionExclusions()).isEqualTo(AutoJdkConfiguration.defaultExtensionExclusions());
+    }
+
+    @Test
+    void importsWithUnknownNamespaceAreIgnored()
+    throws Exception
+    {
+        String baseXml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <includes>" +
+                "        <include>sub1.xml</include>" +
+                "        <include>unknownnamespace.xml</include>" +
+                "    </includes>" +
+                "</autojdk-configuration>";
+        Path baseConfigFile = tempDir.resolve("config.xml");
+        Files.writeString(baseConfigFile, baseXml);
+
+        String sub1Xml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path sub1ConfigFile = tempDir.resolve("sub1.xml");
+        Files.writeString(sub1ConfigFile, sub1Xml);
+
+        //This one should be completely ignored because it has the wrong namespace
+        String unknownNamespaceXml =
+                "<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/some-unknown-version'>" +
+                "    <vendors>" +
+                "        <vendor>zulu</vendor>" +
+                "        <vendor>temurin</vendor>" +
+                "        <vendor>*</vendor>" +
+                "    </vendors>" +
+                "</autojdk-configuration>";
+        Path unknownNamespaceFile = tempDir.resolve("unknownnamespace.xml");
+        Files.writeString(unknownNamespaceFile, unknownNamespaceXml);
 
         AutoJdkConfiguration configuration = AutoJdkConfiguration.fromFile(baseConfigFile, new AutoJdkXmlManager(), createActivationProcessor(), createMavenSession());
 
