@@ -108,7 +108,7 @@ your user home.
 The compile and test goals will use this JDK:
 
 ```
-[INFO] --- compiler:3.10.1:compile (default-compile) @ autojdk-sample-java ---
+[INFO] --- compiler:3.10.1:compile (default-compile) @ my-project ---
 [INFO] Toolchain in maven-compiler-plugin: JDK[/home/auser/.m2/autojdk/jdks/zulu-11.0.25-9-linux-x64]
 [INFO] ...
 
@@ -160,3 +160,112 @@ For example:
 Configure toolchains with the version of the JDK you want to use.
 The AutoJDK plugin will read this when running its prepare
 goal to download a version of this JDK.
+
+## Configuration
+
+The XML configuration file `autojdk-configuration.xml` in the
+`.m2/autojdk` directory can be configured with options.  If this
+file does not exist, defaults will be used.
+
+Typically, this is only needed for advanced usage.
+
+### Proxy configuration
+
+[Maven's own proxy settings](https://maven.apache.org/guides/mini/guide-proxies.html)
+are used for downloading JDKs.
+
+### Excluding JDK versions from being selected by the extension
+
+When the AutoJDK extension runs, it will attempt to match the project's
+desired Java version to a JDK version.  By default, this just matches
+by major version number - so if a project needs Java 11, AutoJDK will attempt to 
+download a version of JDK 11 for your platform.  However, there may be 
+cases where this is not desired, for example:
+
+- Prevent very old JDKs from being used since they are no longer have security updates
+- Running on a platform that does not have any available old versions of the
+  JDK (such as Linux/RISC-V, which only has Java 19 or later)
+
+To configure this, use `extension-exclusion`s in the configuration file
+using the [Maven version range syntax](https://cwiki.apache.org/confluence/display/MAVENOLD/Dependency+Mediation+and+Conflict+Resolution#DependencyMediationandConflictResolution-DependencyVersionRanges).
+
+For example:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>
+    <extension-exclusions>
+        <extension-exclusion>
+            <!-- Anything under JDK 11, use JDK 11 -->
+            <!-- Default does the same but with JDK 8 -->
+            <version>(,11)</version>
+            <substitution>[11,12)</substitution>
+        </extension-exclusion>
+    </extension-exclusions>
+</autojdk-configuration>
+```
+
+In this example, an extension exclusion's matching `version` 
+range `(,11)` (which matches any JDK version lower than 11)
+will instead match on a JDK version 11 (specified in this 
+example by the range `[11, 12)`).  
+
+In practice, this configuration would mean that for a project that specified
+Java 6 (through compiler configuration), AutoJDK would 
+download/install/use JDK 11.
+
+### Using specific JDK vendors
+
+By default, AutoJDK has a preferred order of JDK vendors.
+For example, a [Zulu OpenJDK from Azul](https://www.azul.com/downloads/#zulu)
+is high on the preference list and will be used if available rather than an Oracle JDK.
+This preference can be overridden if desired.
+
+For example, to use [Eclipse Temurin](https://adoptium.net/temurin/releases/) OpenJDKs by default if available before 
+falling back to any other JDK:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>
+    <vendors>
+        <vendor>termurin</vendor>
+        <vendor>*</vendor>
+    </vendors>
+</autojdk-configuration>
+```
+
+The '*' vendor matches any other available vendor for your platform.
+If, in your overridden vendor list, the '*' vendor is not present,
+only JDKs from the vendors explicitly specified in your list will be 
+used.
+
+### JDK update policy
+
+By default, when AutoJDK is executed and needs to set up a JDK,
+it will check remote repositories at most once-per-day as part of 
+its execution.  This update policy can be reconfigured with:
+
+```
+<?xml version="1.0" encoding="UTF-8"?>
+<autojdk-configuration xmlns='https://autojdk.causal.net.au/configuration/1.0'>
+    <jdk-update-policy>
+        <every>P2DT1H</every>
+    </jdk-update-policy>
+</autojdk-configuration>
+```
+
+Under `jdk-update-policy` these options are available:
+
+- `<every>duration</every>` where duration is in ISO-8601 duration format.
+  For example `P7D` for once per week.
+- `<always/>` will always check every time.  
+  Even if a matching JDK version already is installed, AutoJDK will
+  check every time.
+- `<never/>` will never check.  AutoJDK will always use an existing
+  installed matching JDK if available.
+
+The update policy only affects _matching_ JDK versions, so if a project
+requires Java version `[11, 12)` and you only have JDK 17 and 
+JDK 21 installed, AutoJDK will still attempt to download even with 
+a `never` policy, once.
+
