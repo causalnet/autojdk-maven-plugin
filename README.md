@@ -234,8 +234,8 @@ falling back to any other JDK:
 </autojdk-configuration>
 ```
 
-The '*' vendor matches any other available vendor for your platform.
-If, in your overridden vendor list, the '*' vendor is not present,
+The `*` vendor matches any other available vendor for your platform.
+If, in your overridden vendor list, the `*` vendor is not present,
 only JDKs from the vendors explicitly specified in your list will be 
 used.
 
@@ -268,4 +268,12 @@ The update policy only affects _matching_ JDK versions, so if a project
 requires Java version `[11, 12)` and you only have JDK 17 and 
 JDK 21 installed, AutoJDK will still attempt to download even with 
 a `never` policy, once.
+
+### Custom repositories
+
+By default, AutoJDK downloads JDKs using the
+[Foojay JDK discovery service](https://github.com/foojayio/discoapi).  However it is possible to 
+download JDKs from custom remote Maven repositories instead.
+This may be desirable in a corporate locked-down environment for
+example.
 
